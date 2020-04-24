@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as tfs
 from torchvision.datasets import *
 from torchvision.models import *
-
+from utils import AverageMeter
 
 tf_tr = tfs.Compose([
     tfs.RandomResizedCrop(32),
@@ -58,15 +58,15 @@ dl_tr = DataLoader(ds_tr, batch_size=256, shuffle=True)
 dl_de = DataLoader(ds_de, batch_size=256, shuffle=True)
 dl_te = DataLoader(ds_te, batch_size=256, shuffle=False)
 
-model = resnet50(pretrained=False)
+model = resnet18(pretrained=False)
 model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
 model.maxpool = nn.Identity()
 
 
 ch = model.fc.in_features
 model.fc = nn.Sequential(nn.Linear(ch, ch),
-                           nn.ReLU(),
-                           nn.Linear(ch, ch))
+                         nn.ReLU(),
+                         nn.Linear(ch, ch))
 model.to("cuda")
 model = nn.DataParallel(model, device_ids=[0, 1])
 
@@ -91,23 +91,22 @@ def nt_xent(x, t=0.5):
 
 optimizer = Adam(model.parameters(), lr=0.001)
 
+loss_meter = AverageMeter("SimCLR_loss")
 
 # SimCLR training
 model.train()
 for epoch in range(100):
-    # c, s = 0, 0
-    # pBar = tqdm(dl_tr)
     for data in dl_tr:
         d = data.size()
         x = data.view(d[0]*2, d[2], d[3], d[4]).to('cuda')
         optimizer.zero_grad()
         p = model(x)
         loss = nt_xent(p)
-        # s = ((s*c)+(float(loss)*len(p)))/(c+len(p))
-        # c += len(p)
-        # pBar.set_description('Train: '+str(round(float(s),3)))
         loss.backward()
+        loss_meter.update(loss.item(), x.size(0))
         optimizer.step()
+    print("SimCLR loss: {:.4f}".format(loss_meter.avg))
+
     if (epoch + 1) % 10 == 0:
         torch.save(model.state_dict(), 'cifar10-rn50-mlp-b256-t0.5-e'+str(epoch + 1)+'.pt')
 
@@ -125,16 +124,11 @@ criterion = nn.CrossEntropyLoss()
 
 model.train()
 for i in range(5):
-    # c, s = 0, 0
-    # pBar = tqdm(dl_de)
     for data in dl_de:
         x, y = data[0].to('cuda'), data[1].to('cuda')
         optimizer.zero_grad()
         p = model(x)
         loss = criterion(p, y)
-        # s = ((s*c)+(float(loss)*len(p)))/(c+len(p))
-        # c += len(p)
-        # pBar.set_description('Train: '+str(round(float(s),3)))
         loss.backward()
         optimizer.step()
 

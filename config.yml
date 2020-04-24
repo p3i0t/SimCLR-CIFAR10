@@ -1,0 +1,48 @@
+hydra:
+  job_logging:
+#    formatters:
+#      simple:
+#        format: '[]'
+    root:
+      handlers: [file, console]  # logging to file only.
+  run:
+    #dir: logs/${dataset}
+    dir: logs/${dataset}
+
+
+dataset: cifar10
+
+data_dir: data
+
+backbone: resnet18 # or resnet34, resnet50
+pretrained: False  # whether load pretrained weights
+# train options
+seed: 42 # sacred handles automatic seeding when passed in the config
+batch_size: 256
+workers: 16
+epochs: 100
+
+inference: False
+# model options
+normalize: True
+projection_dim: 64 # "[...] to project the representation to a 128-dimensional latent space"
+
+# loss options
+optimizer: "Adam" # or LARS (experimental)
+weight_decay: 1.0e-6 # "optimized using LARS [...] and weight decay of 10−6"
+temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch sizes
+
+## reload options
+#model_path: "logs/0" # set to the directory containing `checkpoint_##.tar`
+#epoch_num: 100 # set to checkpoint number
+#
+## mixed-precision training
+#fp16: False
+#fp16_opt_level: "O2"
+
+
+# logistic regression options
+logistic_batch_size: 256
+logistic_epochs: 100
+
+device: cuda
