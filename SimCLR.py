@@ -55,7 +55,7 @@ ds_te = CIFAR10(root='data', train=False, transform=tf_te, download=True)
 
 
 dl_tr = DataLoader(ds_tr, batch_size=256, shuffle=True)
-dl_de = DataLoader(ds_dcudae, batch_size=256, shuffle=True)
+dl_de = DataLoader(ds_de, batch_size=256, shuffle=True)
 dl_te = DataLoader(ds_te, batch_size=256, shuffle=False)
 
 model = resnet50(pretrained=False)
@@ -68,6 +68,7 @@ model.fc = nn.Sequential(nn.Linear(ch, ch),
                            nn.ReLU(),
                            nn.Linear(ch, ch))
 model.to("cuda")
+model = nn.DataParallel(model, device_ids=[0, 1])
 
 
 def pair_cosine_similarity(x, eps=1e-8):
@@ -115,6 +116,7 @@ for param in model.parameters():
 
 model.fc = nn.Linear(ch, len(ds_de.classes))
 model.to('cuda')
+model = nn.DataParallel(model, device_ids=[0, 1])
 
 
 optimizer = Adam(model.parameters(), lr=0.003)
@@ -137,7 +139,6 @@ for i in range(5):
         optimizer.step()
 
 
-model.eval()
 model.eval()
 acc_list = []
 for data in dl_te:
