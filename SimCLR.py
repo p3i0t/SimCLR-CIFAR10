@@ -107,8 +107,8 @@ for epoch in range(100):
         # pBar.set_description('Train: '+str(round(float(s),3)))
         loss.backward()
         optimizer.step()
-    if (epoch+1) % 10 == 0:
-        torch.save(model.state_dict(), 'cifar10-rn50-mlp-b256-t0.5-e'+str(epoch+1)+'.pt')
+    if (epoch + 1) % 10 == 0:
+        torch.save(model.state_dict(), 'cifar10-rn50-mlp-b256-t0.5-e'+str(epoch + 1)+'.pt')
 
 for param in model.parameters():
     param.requires_grad = False
