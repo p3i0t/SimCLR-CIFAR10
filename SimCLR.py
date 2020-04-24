@@ -1,5 +1,5 @@
 import numpy as np
-from tqdm import tqdm_notebook as tqdm
+import logging
 from PIL import Image
 
 import torch
@@ -10,6 +10,8 @@ import torchvision.transforms as tfs
 from torchvision.datasets import *
 from torchvision.models import *
 from utils import AverageMeter
+
+logger = logging.getLogger(__name__)
 
 tf_tr = tfs.Compose([
     tfs.RandomResizedCrop(32),
@@ -105,7 +107,7 @@ for epoch in range(100):
         loss.backward()
         loss_meter.update(loss.item(), x.size(0))
         optimizer.step()
-    print("SimCLR loss: {:.4f}".format(loss_meter.avg))
+    logger.info("Epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
 
     if (epoch + 1) % 10 == 0:
         torch.save(model.state_dict(), 'cifar10-rn50-mlp-b256-t0.5-e'+str(epoch + 1)+'.pt')
@@ -141,4 +143,4 @@ for data in dl_te:
     acc = (p.argmax(dim=-1) == y).float().mean().item()
     acc_list.append(acc)
 
-print("Test Acc: {:.4f}".format(np.mean(acc_list)))
+logger.info("Test Acc: {:.4f}".format(np.mean(acc_list)))
