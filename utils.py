@@ -1,7 +1,7 @@
 import torch
 from torch.optim import Adam
-from lars import LARS
-from simclr import SimCLR
+# from lars import LARS
+# from simclr import SimCLR
 
 
 class AverageMeter(object):
@@ -23,39 +23,39 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def load_model(args):
-    model = SimCLR(backbone=args.backbone,
-                   projection_dim=args.projection_dim,
-                   pretrained=args.pretrained,
-                   normalize=args.normalize)
-
-    if args.inference:
-        model.load_state_dict(torch.load("SimCLR_{}_epoch90.pth".format(args.backbone)))
-
-    model = model.to(args.device)
-
-    scheduler = None
-    if args.optimizer == "Adam":
-        optimizer = Adam(model.parameters(), lr=3e-4)  # TODO: LARS
-    elif args.optimizer == "LARS":
-        # optimized using LARS with linear learning rate scaling
-        # (i.e. LearningRate = 0.3 × BatchSize/256) and weight decay of 10−6.
-        learning_rate = 0.3 * args.batch_size / 256
-        optimizer = LARS(
-            model.parameters(),
-            lr=learning_rate,
-            weight_decay=args.weight_decay,
-            exclude_from_weight_decay=["batch_normalization", "bias"],
-        )
-
-        # "decay the learning rate with the cosine decay schedule without restarts"
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, args.epochs, eta_min=0, last_epoch=-1
-        )
-    else:
-        raise NotImplementedError
-
-    return model, optimizer, scheduler
+# def load_model(args):
+#     model = SimCLR(backbone=args.backbone,
+#                    projection_dim=args.projection_dim,
+#                    pretrained=args.pretrained,
+#                    normalize=args.normalize)
+#
+#     if args.inference:
+#         model.load_state_dict(torch.load("SimCLR_{}_epoch90.pth".format(args.backbone)))
+#
+#     model = model.to(args.device)
+#
+#     scheduler = None
+#     if args.optimizer == "Adam":
+#         optimizer = Adam(model.parameters(), lr=3e-4)  # TODO: LARS
+#     elif args.optimizer == "LARS":
+#         # optimized using LARS with linear learning rate scaling
+#         # (i.e. LearningRate = 0.3 × BatchSize/256) and weight decay of 10−6.
+#         learning_rate = 0.3 * args.batch_size / 256
+#         optimizer = LARS(
+#             model.parameters(),
+#             lr=learning_rate,
+#             weight_decay=args.weight_decay,
+#             exclude_from_weight_decay=["batch_normalization", "bias"],
+#         )
+#
+#         # "decay the learning rate with the cosine decay schedule without restarts"
+#         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+#             optimizer, args.epochs, eta_min=0, last_epoch=-1
+#         )
+#     else:
+#         raise NotImplementedError
+#
+#     return model, optimizer, scheduler
 
 
 def save_model(args, model, epoch):
