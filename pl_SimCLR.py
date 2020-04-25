@@ -68,12 +68,6 @@ class SimCLR(pl.LightningModule):
         tensorboard_logs = {'SimCLR_loss': loss}
         return {'SimCLR_loss': loss, 'log': tensorboard_logs}
 
-    def validation_step(self):
-        pass
-
-    def test_step(self):
-        pass
-
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=0.001)
 
@@ -97,4 +91,4 @@ class SimCLR(pl.LightningModule):
 if __name__ == '__main__':
     model = SimCLR(backbone='resnet18', batch_size=256)
     trainer = pl.trainer(gpus=2, max_epochs=300)
-    trainer.fit()
+    trainer.fit(model)
