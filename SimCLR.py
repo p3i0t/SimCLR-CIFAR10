@@ -32,15 +32,6 @@ class CustomCIFAR10(CIFAR10):
         return torch.stack(imgs)  # stack a positive pair
 
 
-ds_de = CIFAR10(root='data', train=True, transform=tf_de, download=True)
-ds_te = CIFAR10(root='data', train=False, transform=tf_te, download=True)
-
-
-model = resnet18(pretrained=False)
-model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
-model.maxpool = nn.Identity()
-
-
 def pair_cosine_similarity(x, eps=1e-8):
     n = x.norm(p=2, dim=1, keepdim=True)
     return (x @ x.t()) / (n * n.t()).clamp(min=eps)
