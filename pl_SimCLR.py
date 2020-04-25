@@ -66,7 +66,7 @@ class SimCLR(pl.LightningModule):
 
         loss = nt_xent(self(x))
         tensorboard_logs = {'SimCLR_loss': loss}
-        return {'SimCLR_loss': loss, 'log': tensorboard_logs}
+        return {'loss': loss, 'log': tensorboard_logs}
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=0.001)
