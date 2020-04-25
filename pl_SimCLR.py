@@ -60,7 +60,7 @@ class SimCLR(pl.LightningModule):
     def forward(self, x):
         return self.model(x)
 
-    def training_step(self, x):
+    def training_step(self, x, batch_idx):
         sizes = x.size()
         x = x.view(sizes[0] * 2, sizes[2], sizes[3], sizes[4]).cuda()
 
