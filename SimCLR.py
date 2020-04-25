@@ -50,7 +50,7 @@ def nt_xent(x, t=0.5):
     return -torch.log(x.mean())
 
 
-@hydra.main(config_path='SimCLR_config.yaml')
+@hydra.main(config_path='SimCLR_config.yml')
 def train_SimCLR(args: DictConfig) -> None:
     assert torch.cuda.is_available()
 
