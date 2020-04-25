@@ -105,7 +105,7 @@ def train_SimCLR(args: DictConfig) -> None:
 
                 loss_meter.update(loss.item(), x.size(0))
 
-            logger.info("Epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
+            logger.info("Epoch {}, SimCLR loss: {:.4f}".format(epoch + 1, loss_meter.avg))
 
             if (epoch + 1) % args.log_interval == 0:
                 torch.save(model, 'cifar10-rn50-mlp-b256-t0.5-e' + str(epoch + 1) + '.pt')
@@ -145,6 +145,7 @@ def train_SimCLR(args: DictConfig) -> None:
             loss.backward()
             optimizer.step()
             classification_loss_meter.update(loss.item(), x.size(0))
+        logger.info("Epoch {}, Linear finetune loss: {:.4f}".format(epoch, classification_loss_meter.avg))
 
     model.eval()
     acc_meter = AverageMeter("Acc")
