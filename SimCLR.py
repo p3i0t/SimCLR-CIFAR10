@@ -78,13 +78,15 @@ def train_SimCLR(args: DictConfig) -> None:
     model.fc = nn.Sequential(nn.Linear(mlp_dim, mlp_dim),
                              nn.ReLU(),
                              nn.Linear(mlp_dim, mlp_dim))
-    model.cuda()
-    model = nn.DataParallel(model, device_ids=[0, 1])
+
+    model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
 
     optimizer = Adam(model.parameters(), lr=0.001)
     if args.load_checkpoint:
         save_path = 'cifar10-rn50-mlp-b256-t0.5-e90.pt'
-        model.load_state_dict(torch.load(save_path))
+        # model.load_state_dict(torch.load(save_path))
+        model = torch.load(save_path)
+        logger.info("model loaded")
     else:
         loss_meter = AverageMeter("SimCLR_loss")
 
@@ -105,7 +107,7 @@ def train_SimCLR(args: DictConfig) -> None:
             logger.info("Epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
 
             if (epoch + 1) % args.log_interval == 0:
-                torch.save(model.state_dict(), 'cifar10-rn50-mlp-b256-t0.5-e' + str(epoch + 1) + '.pt')
+                torch.save(model, 'cifar10-rn50-mlp-b256-t0.5-e' + str(epoch + 1) + '.pt')
 
     #  finetune a linear classifier
     optimizer = Adam(model.parameters(), lr=0.003)
