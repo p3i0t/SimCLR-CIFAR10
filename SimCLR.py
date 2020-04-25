@@ -109,10 +109,6 @@ def train_SimCLR(args: DictConfig) -> None:
             if (epoch + 1) % args.log_interval == 0:
                 torch.save(model, 'cifar10-rn50-mlp-b256-t0.5-e' + str(epoch + 1) + '.pt')
 
-    #  finetune a linear classifier
-    optimizer = Adam(model.parameters(), lr=0.003)
-    criterion = nn.CrossEntropyLoss()
-
     for param in model.parameters():
         param.requires_grad = False
 
@@ -131,6 +127,10 @@ def train_SimCLR(args: DictConfig) -> None:
 
     model.fc = nn.Linear(mlp_dim, len(train_set.classes))
     model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
+
+    #  finetune a linear classifier
+    optimizer = Adam(model.parameters(), lr=0.003)
+    criterion = nn.CrossEntropyLoss()
 
     model.train()
     classification_loss_meter = AverageMeter("classification_loss")
