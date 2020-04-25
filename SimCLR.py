@@ -53,6 +53,8 @@ def nt_xent(x, t=0.5):
 @hydra.main(config_path='SimCLR_config.yaml')
 def train_SimCLR(args: DictConfig) -> None:
     assert torch.cuda.is_available()
+
+    data_dir = hydra.utils.to_absolute_path(args.data_dir)
     transform = tfs.Compose([
         tfs.RandomResizedCrop(32),
         tfs.RandomHorizontalFlip(),
@@ -62,7 +64,7 @@ def train_SimCLR(args: DictConfig) -> None:
                       std=[0.229, 0.224, 0.225])
     ])
 
-    train_set = CustomCIFAR10(root=args.data_dir, train=True, transform=transform, download=True)
+    train_set = CustomCIFAR10(root=data_dir, train=True, transform=transform, download=True)
 
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
 
@@ -119,8 +121,8 @@ def train_SimCLR(args: DictConfig) -> None:
                       std=[0.229, 0.224, 0.225])
     ])
 
-    train_set = CIFAR10(root=args.data_dir, train=True, transform=normal_transform, download=True)
-    test_set = CIFAR10(root=args.data_dir, train=False, transform=normal_transform, download=True)
+    train_set = CIFAR10(root=data_dir, train=True, transform=normal_transform, download=True)
+    test_set = CIFAR10(root=data_dir, train=False, transform=normal_transform, download=True)
 
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
