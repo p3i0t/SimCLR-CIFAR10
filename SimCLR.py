@@ -79,7 +79,8 @@ def train_SimCLR(args: DictConfig) -> None:
                              nn.ReLU(),
                              nn.Linear(mlp_dim, mlp_dim))
 
-    model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
+    model = model.cuda()
+    # model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
 
     optimizer = Adam(model.parameters(), lr=0.001)
     if args.load_checkpoint:
@@ -126,7 +127,8 @@ def train_SimCLR(args: DictConfig) -> None:
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
 
     model.fc = nn.Linear(mlp_dim, len(train_set.classes))
-    model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
+    model = model.cuda()
+    # model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
 
     #  finetune a linear classifier
     optimizer = Adam(model.parameters(), lr=0.003)
