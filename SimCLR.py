@@ -130,8 +130,7 @@ def train_SimCLR(args: DictConfig) -> None:
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
 
     model.fc = nn.Linear(mlp_dim, len(train_set.classes))
-    model.cuda()
-    model = nn.DataParallel(model, device_ids=[0, 1])
+    model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
 
     model.train()
     classification_loss_meter = AverageMeter("classification_loss")
