@@ -134,7 +134,7 @@ def train_SimCLR(args: DictConfig) -> None:
     model.train()
     classification_loss_meter = AverageMeter("classification_loss")
     for epoch in range(5):
-        for batch_id, (x, y) in train_loader:
+        for batch_id, (x, y) in enumerate(train_loader):
             x, y = x.cuda(), y.cuda()
             optimizer.zero_grad()
             pred = model(x)
@@ -145,7 +145,7 @@ def train_SimCLR(args: DictConfig) -> None:
 
     model.eval()
     acc_meter = AverageMeter("Acc")
-    for batch_id, (x, y) in test_loader:
+    for batch_id, (x, y) in enumerate(test_loader):
         x, y = x.cuda(), y.cuda()
         p = model(x)
         acc = (p.argmax(dim=-1) == y).float().mean().item()
