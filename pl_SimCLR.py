@@ -90,5 +90,9 @@ class SimCLR(pl.LightningModule):
 
 if __name__ == '__main__':
     model = SimCLR(backbone='resnet18', batch_size=256)
-    trainer = pl.Trainer(gpus=2, max_epochs=300)
+    trainer = pl.Trainer(gpus=2,
+                         max_epochs=300,
+                         distributed_backend='dp',
+                         benchmark=True,
+                         log_save_interval=100)
     trainer.fit(model)
