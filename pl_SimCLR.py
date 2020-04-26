@@ -4,7 +4,9 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import CIFAR10
 from torchvision.models import resnet18, resnet34, resnet50
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
 from PIL import Image
+
 
 
 def pair_cosine_similarity(x, eps=1e-8):
@@ -90,9 +92,12 @@ class SimCLR(pl.LightningModule):
 
 if __name__ == '__main__':
     model = SimCLR(backbone='resnet18', batch_size=256)
+    ckpt_callback = ModelCheckpoint(filepath='log/SimCLR/{epoch}-{loss}',
+                                    verbose=True, period=2)
     trainer = pl.Trainer(gpus=2,
                          max_epochs=300,
                          distributed_backend='dp',
                          benchmark=True,
-                         log_save_interval=100)
+                         log_save_interval=100,
+                         checkpoint_callback=ckpt_callback)
     trainer.fit(model)
