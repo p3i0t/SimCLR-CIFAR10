@@ -137,7 +137,7 @@ def train_SimCLR(args: DictConfig) -> None:
         model.load_state_dict(ckpt['model'])
         logger.info("Model loaded on epoch {}".format(args.load_epoch))
         model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
-        model.eval()
+        finetune_linear(model, args)
     else:
         model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
         optimizer = Adam(model.parameters(), lr=0.001)
