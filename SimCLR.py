@@ -67,9 +67,13 @@ def finetune_linear(model, args):
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
 
-    mlp_dim = model.fc.in_features
-    model.fc = nn.Linear(mlp_dim, len(train_set.classes))
-    model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
+    if isinstance(model, nn.DataParallel):
+        f = model.module
+    else:
+        f = model
+    mlp_dim = f.fc.in_features
+    f.fc = nn.Linear(mlp_dim, len(train_set.classes))
+    model = model.cuda()
 
     #  finetune a linear classifier
     optimizer = Adam(model.parameters(), lr=0.003)
