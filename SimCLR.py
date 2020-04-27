@@ -49,6 +49,56 @@ def nt_xent(x, t=0.5):
     return -torch.log(x.mean())
 
 
+def finetune_linear(model, args):
+    for param in model.parameters():
+        param.requires_grad = False
+
+    normal_transform = tfs.Compose([
+        tfs.Resize(32),
+        tfs.ToTensor(),
+        tfs.Normalize(mean=[0.485, 0.456, 0.406],
+                      std=[0.229, 0.224, 0.225])
+    ])
+
+    data_dir = hydra.utils.to_absolute_path(args.data_dir)
+    train_set = CIFAR10(root=data_dir, train=True, transform=normal_transform, download=True)
+    test_set = CIFAR10(root=data_dir, train=False, transform=normal_transform, download=True)
+
+    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
+    test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
+
+    mlp_dim = model.fc.in_features
+    model.fc = nn.Linear(mlp_dim, len(train_set.classes))
+    model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
+
+    #  finetune a linear classifier
+    optimizer = Adam(model.parameters(), lr=0.003)
+    criterion = nn.CrossEntropyLoss()
+
+    model.train()
+    classification_loss_meter = AverageMeter("classification_loss")
+    for epoch in range(5):
+        for batch_id, (x, y) in enumerate(train_loader):
+            x, y = x.cuda(), y.cuda()
+            optimizer.zero_grad()
+            pred = model(x)
+            loss = criterion(pred, y)
+            loss.backward()
+            optimizer.step()
+            classification_loss_meter.update(loss.item(), x.size(0))
+        logger.info("Epoch {}, Linear finetune loss: {:.4f}".format(epoch, classification_loss_meter.avg))
+
+    model.eval()
+    acc_meter = AverageMeter("Acc")
+    for batch_id, (x, y) in enumerate(test_loader):
+        x, y = x.cuda(), y.cuda()
+        pred = model(x)
+        acc = (pred.argmax(dim=-1) == y).float().mean().item()
+        acc_meter.update(acc, x.size(0))
+
+    logger.info("Test Acc: {:.4f}".format(acc_meter.avg))
+
+
 @hydra.main(config_path='config_SimCLR.yml')
 def train_SimCLR(args: DictConfig) -> None:
     assert torch.cuda.is_available()
@@ -78,17 +128,16 @@ def train_SimCLR(args: DictConfig) -> None:
                              nn.ReLU(),
                              nn.Linear(mlp_dim, args.projection_dim))
 
-    if False:
+    if args.load_checkpoint:
         ckpt = torch.load('{}-{}-b{}-t{}-e{}.pt'.format(args.dataset,
                                                         args.backbone,
                                                         args.batch_size,
                                                         args.temperature,
-                                                        epoch))
+                                                        args.load_epoch))
         model.load_state_dict(ckpt['model'])
+        logger.info("Model loaded on epoch {}".format(args.load_epoch))
+        model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
         model.eval()
-        x = next(iter(train_loader))
-        v = model(x.cuda())
-        print(v.size())
     else:
         model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
         optimizer = Adam(model.parameters(), lr=0.001)
@@ -120,61 +169,7 @@ def train_SimCLR(args: DictConfig) -> None:
                                                                  args.batch_size,
                                                                  args.temperature,
                                                                  epoch))
-    # if args.load_checkpoint:
-    #     save_path = 'cifar10-rn50-mlp-b256-t0.5-e90.pt'
-    #     # model.load_state_dict(torch.load(save_path))
-    #     model = torch.load(save_path)
-    #     logger.info("model loaded")
-    # else:
-
-
-    #
-    # for param in model.parameters():
-    #     param.requires_grad = False
-    #
-    # normal_transform = tfs.Compose([
-    #     tfs.Resize(32),
-    #     tfs.ToTensor(),
-    #     tfs.Normalize(mean=[0.485, 0.456, 0.406],
-    #                   std=[0.229, 0.224, 0.225])
-    # ])
-    #
-    # train_set = CIFAR10(root=data_dir, train=True, transform=normal_transform, download=True)
-    # test_set = CIFAR10(root=data_dir, train=False, transform=normal_transform, download=True)
-    #
-    # train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
-    # test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
-    #
-    # model.fc = nn.Linear(mlp_dim, len(train_set.classes))
-    # model = model.cuda()
-    # # model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
-    #
-    # #  finetune a linear classifier
-    # optimizer = Adam(model.parameters(), lr=0.003)
-    # criterion = nn.CrossEntropyLoss()
-    #
-    # model.train()
-    # classification_loss_meter = AverageMeter("classification_loss")
-    # for epoch in range(5):
-    #     for batch_id, (x, y) in enumerate(train_loader):
-    #         x, y = x.cuda(), y.cuda()
-    #         optimizer.zero_grad()
-    #         pred = model(x)
-    #         loss = criterion(pred, y)
-    #         loss.backward()
-    #         optimizer.step()
-    #         classification_loss_meter.update(loss.item(), x.size(0))
-    #     logger.info("Epoch {}, Linear finetune loss: {:.4f}".format(epoch, classification_loss_meter.avg))
-    #
-    # model.eval()
-    # acc_meter = AverageMeter("Acc")
-    # for batch_id, (x, y) in enumerate(test_loader):
-    #     x, y = x.cuda(), y.cuda()
-    #     p = model(x)
-    #     acc = (p.argmax(dim=-1) == y).float().mean().item()
-    #     acc_meter.update(acc, x.size(0))
-    #
-    # logger.info("Test Acc: {:.4f}".format(acc_meter.avg))
+                finetune_linear(model, args)
 
 
 if __name__ == '__main__':

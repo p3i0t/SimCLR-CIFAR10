@@ -19,11 +19,12 @@ pretrained: False  # whether load pretrained weights
 
 # train options
 load_checkpoint: False
+load_epoch: 100
 seed: 42 # sacred handles automatic seeding when passed in the config
 batch_size: 256
 workers: 16
-epochs: 300
-log_interval: 50
+epochs: 1000
+log_interval: 100
 
 inference: False
 # model options
