@@ -2,7 +2,6 @@ import hydra
 from omegaconf import DictConfig
 import logging
 
-import numpy as np
 import logging
 from PIL import Image
 
@@ -14,7 +13,6 @@ import torchvision.transforms as tfs
 from torchvision.datasets import CIFAR10
 from torchvision.models import resnet18, resnet34, resnet50
 from utils import AverageMeter
-from apex import amp
 
 logger = logging.getLogger(__name__)
 
@@ -80,47 +78,49 @@ def train_SimCLR(args: DictConfig) -> None:
                              nn.ReLU(),
                              nn.Linear(mlp_dim, args.projection_dim))
 
-    model = model.cuda()
-    # model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
-
+    model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
     optimizer = Adam(model.parameters(), lr=0.001)
-    if args.fp16:
-        model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
 
-    # SimCLR training
-    model.train()
-    for epoch in range(1, args.epochs + 1):
-        loss_meter = AverageMeter("SimCLR_loss")
-        for x in train_loader:
-            sizes = x.size()
-            x = x.view(sizes[0] * 2, sizes[2], sizes[3], sizes[4]).cuda()
+    if False:
+        ckpt = torch.load('{}-{}-t{}-e{}.pt'.format(args.dataset,
+                                                    args.backbone,
+                                                    args.batch_size,
+                                                    args.temperature,
+                                                    epoch))
+        model.load_state_dict(ckpt['model'])
+        model.eval()
+        x = next(iter(train_loader))
+        v = model(x.cuda())
+        print(v.size())
+    else:
+        # SimCLR training
+        model.train()
+        for epoch in range(1, args.epochs + 1):
+            loss_meter = AverageMeter("SimCLR_loss")
+            for x in train_loader:
+                sizes = x.size()
+                x = x.view(sizes[0] * 2, sizes[2], sizes[3], sizes[4]).cuda()
 
-            optimizer.zero_grad()
-            loss = nt_xent(model(x), args.temperature)
-            if args.fp16:
-                with amp.scale_loss(loss, optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
+                optimizer.zero_grad()
+                loss = nt_xent(model(x), args.temperature)
                 loss.backward()
-            optimizer.step()
+                optimizer.step()
 
-            loss_meter.update(loss.item(), x.size(0))
+                loss_meter.update(loss.item(), x.size(0))
 
-        logger.info("Epoch {}, SimCLR loss: {:.4f}".format(epoch + 1, loss_meter.avg))
+            logger.info("Epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
 
-        if epoch >= args.log_interval and epoch % args.log_interval == 0:
-            # Save checkpoint
-            checkpoint = {
-                'model': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-            }
-            if args.fp16:
-                checkpoint['amp'] = amp.state_dict()
-            torch.save(checkpoint, '{}-{}-t{}-e{}.pt'.format(args.dataset,
-                                                             args.backbone,
-                                                             args.batch_size,
-                                                             args.temperature,
-                                                             epoch))
+            if epoch >= args.log_interval and epoch % args.log_interval == 0:
+                # Save checkpoint
+                checkpoint = {
+                    'model': model.module.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                }
+                torch.save(checkpoint, '{}-{}-t{}-e{}.pt'.format(args.dataset,
+                                                                 args.backbone,
+                                                                 args.batch_size,
+                                                                 args.temperature,
+                                                                 epoch))
     # if args.load_checkpoint:
     #     save_path = 'cifar10-rn50-mlp-b256-t0.5-e90.pt'
     #     # model.load_state_dict(torch.load(save_path))
