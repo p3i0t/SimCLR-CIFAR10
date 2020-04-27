@@ -47,8 +47,7 @@ fp16: False
 fp16_opt_level: "O1"
 
 
-# logistic regression options
-logistic_batch_size: 256
-logistic_epochs: 100
+# finetune options
+finetune_epochs: 100
 
 device: cuda
