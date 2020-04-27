@@ -23,12 +23,12 @@ seed: 42 # sacred handles automatic seeding when passed in the config
 batch_size: 256
 workers: 16
 epochs: 300
-log_interval: 10
+log_interval: 50
 
 inference: False
 # model options
 normalize: True
-projection_dim: 64 # "[...] to project the representation to a 128-dimensional latent space"
+projection_dim: 128 # "[...] to project the representation to a 128-dimensional latent space"
 
 # loss options
 optimizer: "Adam" # or LARS (experimental)
@@ -42,8 +42,8 @@ temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch 
 #epoch_num: 100 # set to checkpoint number
 #
 ## mixed-precision training
-#fp16: False
-#fp16_opt_level: "O2"
+fp16: False
+fp16_opt_level: "O1"
 
 
 # logistic regression options
