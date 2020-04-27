@@ -113,8 +113,9 @@ def train_SimCLR(args: DictConfig) -> None:
             checkpoint = {
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
-                'amp': amp.state_dict()
             }
+            if args.fp16:
+                checkpoint['amp'] = amp.state_dict()
             torch.save(checkpoint, '{}-{}-t{}-e{}.pt'.format(args.dataset,
                                                              args.backbone,
                                                              args.batch_size,
