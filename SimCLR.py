@@ -71,7 +71,7 @@ def finetune_linear(model, args):
         f = model.module
     else:
         f = model
-    mlp_dim = f.fc.in_features
+    mlp_dim = f.fc.layer[0].in_features
     f.fc = nn.Linear(mlp_dim, len(train_set.classes))
     model = model.cuda()
 
