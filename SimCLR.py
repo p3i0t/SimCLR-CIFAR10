@@ -82,11 +82,11 @@ def train_SimCLR(args: DictConfig) -> None:
     optimizer = Adam(model.parameters(), lr=0.001)
 
     if False:
-        ckpt = torch.load('{}-{}-t{}-e{}.pt'.format(args.dataset,
-                                                    args.backbone,
-                                                    args.batch_size,
-                                                    args.temperature,
-                                                    epoch))
+        ckpt = torch.load('{}-{}-b{}-t{}-e{}.pt'.format(args.dataset,
+                                                        args.backbone,
+                                                        args.batch_size,
+                                                        args.temperature,
+                                                        epoch))
         model.load_state_dict(ckpt['model'])
         model.eval()
         x = next(iter(train_loader))
@@ -116,7 +116,7 @@ def train_SimCLR(args: DictConfig) -> None:
                     'model': model.module.state_dict(),
                     'optimizer': optimizer.state_dict(),
                 }
-                torch.save(checkpoint, '{}-{}-t{}-e{}.pt'.format(args.dataset,
+                torch.save(checkpoint, '{}-{}-b{}-t{}-e{}.pt'.format(args.dataset,
                                                                  args.backbone,
                                                                  args.batch_size,
                                                                  args.temperature,
