@@ -78,9 +78,6 @@ def train_SimCLR(args: DictConfig) -> None:
                              nn.ReLU(),
                              nn.Linear(mlp_dim, args.projection_dim))
 
-    model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
-    optimizer = Adam(model.parameters(), lr=0.001)
-
     if False:
         ckpt = torch.load('{}-{}-b{}-t{}-e{}.pt'.format(args.dataset,
                                                         args.backbone,
@@ -93,6 +90,8 @@ def train_SimCLR(args: DictConfig) -> None:
         v = model(x.cuda())
         print(v.size())
     else:
+        model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
+        optimizer = Adam(model.parameters(), lr=0.001)
         # SimCLR training
         model.train()
         for epoch in range(1, args.epochs + 1):
