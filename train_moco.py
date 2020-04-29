@@ -26,6 +26,13 @@ from utils import AverageMeter
 import moco.builder
 from PIL import Image
 
+import hydra
+from omegaconf import DictConfig
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
@@ -33,81 +40,22 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
-                    choices=model_names,
-                    help='model architecture: ' +
-                         ' | '.join(model_names) +
-                         ' (default: resnet50)')
-parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
-                    help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=200, type=int, metavar='N',
-                    help='number of total epochs to run')
-parser.add_argument('-b', '--batch-size', default=256, type=int,
-                    metavar='N',
-                    help='mini-batch size (default: 256), this is the total '
-                         'batch size of all GPUs on the current node when '
-                         'using Data Parallel or Distributed Data Parallel')
-parser.add_argument('--lr', '--learning-rate', default=0.03, type=float,
-                    metavar='LR', help='initial learning rate', dest='lr')
+
+
 parser.add_argument('--schedule', default=[120, 160], nargs='*', type=int,
                     help='learning rate schedule (when to drop lr by 10x)')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum of SGD solver')
-parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
-                    metavar='W', help='weight decay (default: 1e-4)',
-                    dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=10, type=int,
-                    metavar='N', help='print frequency (default: 10)')
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
-                    help='path to latest checkpoint (default: none)')
-parser.add_argument('--world-size', default=1, type=int,
-                    help='number of nodes for distributed training, default 1 machine')
-parser.add_argument('--dist-backend', default='nccl', type=str,
-                    help='distributed backend')
-parser.add_argument('--seed', default=None, type=int,
-                    help='seed for initializing training. ')
-
-# moco specific configs:
-parser.add_argument('--moco-dim', default=128, type=int,
-                    help='feature dimension (default: 128)')
-parser.add_argument('--moco-k', default=65536, type=int,
-                    help='queue size; number of negative keys (default: 65536)')
-parser.add_argument('--moco-m', default=0.999, type=float,
-                    help='moco momentum of updating key encoder (default: 0.999)')
-parser.add_argument('--moco-t', default=0.07, type=float,
-                    help='softmax temperature (default: 0.07)')
-
-# options for moco v2
-parser.add_argument('--mlp', action='store_true',
-                    help='use mlp head')
-parser.add_argument('--aug-plus', action='store_true',
-                    help='use moco v2 data augmentation')
-parser.add_argument('--cos', action='store_true',
-                    help='use cosine lr schedule')
 
 
-def main():
-    args = parser.parse_args()
-
-    if args.seed is not None:
-        random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        cudnn.deterministic = True
-        warnings.warn('You have chosen to seed training. '
-                      'This will turn on the CUDNN deterministic setting, '
-                      'which can slow down your training considerably! '
-                      'You may see unexpected behavior when restarting '
-                      'from checkpoints.')
-
-    args.distributed = args.world_size > 1 or args.multiprocessing_distributed
-
-    # One node (machine), N GPU cards
+@hydra.main(config_path='config_moco.yml')
+def main(args: DictConfig) -> None:
+    """
+    One node (machine), N GPU cards. So world_size=1 is adjusted to world_size * N, the # processes.
+    """
     n_gpus = torch.cuda.device_count()
-    # Since we have n_gpus (N) processes per node, the total world_size
-    # needs to be adjusted accordingly, i.e. the total number of processes to be launched.
     args.world_size = n_gpus * args.world_size
-    # Use torch.multiprocessing.spawn to launch distributed processes: the
-    # main_worker process function
+    # Use torch.multiprocessing.spawn to launch distributed processes: the main_worker process function
     mp.spawn(main_worker, nprocs=n_gpus, args=(args, ))
 
 
@@ -121,8 +69,9 @@ class CustomCIFAR10(datasets.CIFAR10):
 
         img = self.data[idx]
         img = Image.fromarray(img).convert('RGB')
-        imgs = [self.transform(img), self.transform(img)]
-        return torch.stack(imgs)  # stack a positive pair
+        return self.transform(img), self.transform(img)
+        # imgs = [self.transform(img), self.transform(img)]
+        # return torch.stack(imgs)  # stack a positive pair
 
 
 def main_worker(rank, args):
@@ -134,9 +83,9 @@ def main_worker(rank, args):
     dist.init_process_group(backend=args.dist_backend, world_size=args.world_size, rank=rank)
 
     # create model
-    print("=> creating model '{}'".format(args.arch))
+    print("=> creating model '{}'".format(args.backbone))
     model = moco.builder.MoCo(
-        models.__dict__[args.arch],
+        models.__dict__[args.backbone],
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     print(model)
     model = model.cuda()
@@ -160,11 +109,12 @@ def main_worker(rank, args):
                              std=[0.229, 0.224, 0.225])
     ])
 
-    train_dataset = CustomCIFAR10(root='data', train=True, transform=transform, download=True)
+    data_dir = hydra.utils.to_absolute_path(args.data_dir)
+    train_dataset = CustomCIFAR10(root=data_dir, train=True, transform=transform, download=True)
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
+        num_workers=16, pin_memory=True, sampler=train_sampler, drop_last=True)
 
     for epoch in range(1, args.epochs + 1):
         train_sampler.set_epoch(epoch)
@@ -175,12 +125,12 @@ def main_worker(rank, args):
         if epoch >= 100 and epoch % 100 == 0:
             checkpoint = {
                 'epoch': epoch,
-                'arch': args.arch,
+                'backbone': args.backbone,
                 'state_dict': model.state_dict(),
                 'optimizer' : optimizer.state_dict(),
             }
 
-            torch.save(checkpoint, "logs/moco/checkpoint_{}.pt".format(epoch))
+            torch.save(checkpoint, "checkpoint_{}.pt".format(epoch))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
