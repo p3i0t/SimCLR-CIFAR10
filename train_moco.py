@@ -126,9 +126,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     # switch to train mode
     model.train()
     for batch_id, (x_a, x_b) in enumerate(train_loader):
-        if args.gpu is not None:
-            x_a = x_a.cuda(args.gpu, non_blocking=True)
-            x_b = x_b.cuda(args.gpu, non_blocking=True)
+        x_a = x_a.cuda(non_blocking=True)
+        x_b = x_b.cuda(non_blocking=True)
 
         # compute output
         output, target = model(im_q=x_a, im_k=x_b)
