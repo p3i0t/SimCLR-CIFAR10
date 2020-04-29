@@ -81,7 +81,7 @@ def finetune_linear(model, args):
 
     model.train()
     classification_loss_meter = AverageMeter("classification_loss")
-    for epoch in range(1, args.finetune + 1):
+    for epoch in range(1, args.finetune_epochs + 1):
         for batch_id, (x, y) in enumerate(train_loader):
             x, y = x.cuda(), y.cuda()
             optimizer.zero_grad()
