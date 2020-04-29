@@ -96,7 +96,7 @@ def main_worker(rank, args):
     ])
 
     # data_dir = hydra.utils.to_absolute_path(args.data_dir)
-    train_dataset = CustomCIFAR10(root='../../data', train=True, transform=transform, download=True)
+    train_dataset = CustomCIFAR10(root='../../../data', train=True, transform=transform, download=True)
     train_sampler = DistributedSampler(train_dataset)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=False,
