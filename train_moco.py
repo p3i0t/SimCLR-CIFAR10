@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-import argparse
 import builtins
 import math
 import os
-import random
-import shutil
-import warnings
 
 import torch
 import torch.nn as nn
@@ -36,16 +32,6 @@ logger = logging.getLogger(__name__)
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
-
-parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('data', metavar='DIR',
-                    help='path to dataset')
-
-
-parser.add_argument('--schedule', default=[120, 160], nargs='*', type=int,
-                    help='learning rate schedule (when to drop lr by 10x)')
-parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                    help='momentum of SGD solver')
 
 
 @hydra.main(config_path='config_moco.yml')
@@ -83,11 +69,11 @@ def main_worker(rank, args):
     dist.init_process_group(backend=args.dist_backend, world_size=args.world_size, rank=rank)
 
     # create model
-    print("=> creating model '{}'".format(args.backbone))
+    logger.info("=> creating model '{}'".format(args.backbone))
     model = moco.builder.MoCo(
         models.__dict__[args.backbone],
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
-    print(model)
+    logger.info(model)
     model = model.cuda()
     model = DDP(model, device_ids=[rank], output_device=rank)
 
@@ -109,9 +95,9 @@ def main_worker(rank, args):
                              std=[0.229, 0.224, 0.225])
     ])
 
-    data_dir = hydra.utils.to_absolute_path(args.data_dir)
-    train_dataset = CustomCIFAR10(root=data_dir, train=True, transform=transform, download=True)
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    # data_dir = hydra.utils.to_absolute_path(args.data_dir)
+    train_dataset = CustomCIFAR10(root='../../data', train=True, transform=transform, download=True)
+    train_sampler = DistributedSampler(train_dataset)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=16, pin_memory=True, sampler=train_sampler, drop_last=True)
@@ -159,7 +145,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    print("Epoch {}, loss: {:.4f}, acc: {:.4f}".format(epoch, losses.avg, acc.avg))
+    logger.info("Epoch {}, loss: {:.4f}, acc: {:.4f}".format(epoch, losses.avg, acc.avg))
 
 
 def adjust_learning_rate(optimizer, epoch, args):
