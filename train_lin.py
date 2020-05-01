@@ -63,8 +63,6 @@ def main_worker(rank, args):
     os.environ['MASTER_ADDR'] = '127.0.0.1'
     os.environ['MASTER_PORT'] = '1234'
 
-    torch.cuda.set_device(rank)  # put the model and training on GPU rank.
-
     dist.init_process_group(backend=args.dist_backend, world_size=args.world_size, rank=rank)
 
     # create model
@@ -96,7 +94,7 @@ def main_worker(rank, args):
     assert set(msg.missing_keys) == {"fc.weight", "fc.bias"}
 
     print("=> loaded pre-trained model '{}'".format('checkpoint_200.pt'))
-
+    torch.cuda.set_device(rank)  # put the model and training on GPU rank.
     model = model.cuda()
     model = DDP(model, device_ids=[rank], output_device=rank)
 
