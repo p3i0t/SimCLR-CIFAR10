@@ -69,45 +69,70 @@ def main_worker(rank, args):
 
     # create model
     logger.info("=> creating model '{}'".format(args.backbone))
-    model = moco.builder.MoCo(
-        models.__dict__[args.backbone],
-        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
-    logger.info(model)
+    model = models.__dict__[args.arch]()
+
+    # freeze all layers but the last fc
+    for name, param in model.named_parameters():
+        if name not in ['fc.weight', 'fc.bias']:
+            param.requires_grad = False
+    # init the fc layer
+    model.fc.weight.data.normal_(mean=0.0, std=0.01)
+    model.fc.bias.data.zero_()
+
+    # load pre-trained
+    checkpoint = torch.load('checkpoint_200.pt', map_location="cpu")
+
+    # rename moco pre-trained keys
+    state_dict = checkpoint['state_dict']
+    for k in list(state_dict.keys()):
+        # retain only encoder_q up to before the embedding layer
+        if k.startswith('module.encoder_q') and not k.startswith('module.encoder_q.fc'):
+            # remove prefix
+            state_dict[k[len("module.encoder_q."):]] = state_dict[k]
+        # delete renamed or unused k
+        del state_dict[k]
+
+    msg = model.load_state_dict(state_dict, strict=False)
+    assert set(msg.missing_keys) == {"fc.weight", "fc.bias"}
+
+    print("=> loaded pre-trained model '{}'".format('checkpoint_200.pt'))
+
     model = model.cuda()
     model = DDP(model, device_ids=[rank], output_device=rank)
 
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda()
-
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
+    # optimize only the linear classifier
+    parameters = list(filter(lambda p: p.requires_grad, model.parameters()))
+    assert len(parameters) == 2  # fc.weight, fc.bias
+    optimizer = torch.optim.SGD(parameters, 0.1,
                                 momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+                                weight_decay=0.)
 
     cudnn.benchmark = True
 
     transform = transforms.Compose([
         transforms.RandomResizedCrop(32),
         transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(0.5, 0.5, 0.5, 0.5),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
     ])
 
     # data_dir = hydra.utils.to_absolute_path(args.data_dir)
-    train_dataset = CustomCIFAR10(root='../../../data', train=True, transform=transform, download=True)
+    train_dataset = datasets.CIFAR10(root='../../../data', train=True, transform=transform, download=True)
     train_sampler = DistributedSampler(train_dataset)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=16, pin_memory=True, sampler=train_sampler, drop_last=True)
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(1, args.finetune_epochs + 1):
         train_sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args)
-        if epoch >= 100 and epoch % 100 == 0:
+        if epoch >= 10 and epoch % 10 == 0:
             checkpoint = {
                 'epoch': epoch,
                 'backbone': args.backbone,
@@ -115,29 +140,29 @@ def main_worker(rank, args):
                 'optimizer' : optimizer.state_dict(),
             }
 
-            torch.save(checkpoint, "checkpoint_{}.pt".format(epoch))
+            torch.save(checkpoint, "lin_checkpoint_{}.pt".format(epoch))
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(train_loader, model, criterion, optimizer, epoch):
     losses = AverageMeter('Loss')
     acc = AverageMeter('Acc')
 
     # switch to train mode
     model.train()
-    for batch_id, (x_a, x_b) in enumerate(train_loader):
-        x_a = x_a.cuda(non_blocking=True)
-        x_b = x_b.cuda(non_blocking=True)
+    for batch_id, (x, y) in enumerate(train_loader):
+        x = x.cuda(non_blocking=True)
+        y = y.cuda(non_blocking=True)
 
         # compute output
-        output, target = model(im_q=x_a, im_k=x_b)
-        loss = criterion(output, target)
+        logits = model(x)
+        loss = criterion(logits, y)
 
         # acc are (K+1)-way contrast classifier accuracy
         # measure accuracy and record loss
-        acc1 = (output.argmax(dim=1) == target).float().mean().item()
+        acc1 = (logits.argmax(dim=1) == y).float().mean().item()
 
-        acc.update(acc1, x_a.size(0))
-        losses.update(loss.item(), x_a.size(0))
+        acc.update(acc1, x.size(0))
+        losses.update(loss.item(), x.size(0))
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -149,11 +174,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 def adjust_learning_rate(optimizer, epoch, args):
     """Decay the learning rate based on schedule"""
     lr = args.lr
-    if args.cos:  # cosine lr schedule
-        lr *= 0.5 * (1. + math.cos(math.pi * epoch / args.epochs))
-    else:  # stepwise lr schedule
-        for milestone in args.schedule:
-            lr *= 0.1 if epoch >= milestone else 1.
+    for milestone in args.schedule:
+        lr *= 0.1 if epoch >= milestone else 1.
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
