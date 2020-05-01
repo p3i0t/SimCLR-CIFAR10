@@ -107,7 +107,7 @@ def main_worker(rank, args):
 
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args)
-        if epoch >= 100 and epoch % 100 == 0:
+        if rank == 0  and epoch >= 100 and epoch % 100 == 0:  # only one process (rank 0) write the checkpoint
             checkpoint = {
                 'epoch': epoch,
                 'backbone': args.backbone,

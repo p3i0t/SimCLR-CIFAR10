@@ -69,6 +69,9 @@ def main_worker(rank, args):
     logger.info("=> creating model '{}'".format(args.backbone))
     model = models.__dict__[args.backbone]()
 
+    model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
+    model.maxpool = nn.Identity()
+
     # freeze all layers but the last fc
     for name, param in model.named_parameters():
         if name not in ['fc.weight', 'fc.bias']:
