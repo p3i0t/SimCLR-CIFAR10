@@ -81,7 +81,7 @@ def main_worker(rank, args):
     model.fc.bias.data.zero_()
 
     # load pre-trained
-    checkpoint = torch.load('checkpoint_200.pt', map_location="cpu")
+    checkpoint = torch.load('checkpoint_{}.pt'.format(args.load_epoch), map_location="cpu")
 
     # rename moco pre-trained keys
     state_dict = checkpoint['state_dict']
@@ -96,7 +96,7 @@ def main_worker(rank, args):
     msg = model.load_state_dict(state_dict, strict=False)
     assert set(msg.missing_keys) == {"fc.weight", "fc.bias"}
 
-    print("=> loaded pre-trained model '{}'".format('checkpoint_200.pt'))
+    print("=> loaded pre-trained model checkpoint_{}.pt".format(args.load_epoch))
     torch.cuda.set_device(rank)  # put the model and training on GPU rank.
     model = model.cuda()
     model = DDP(model, device_ids=[rank], output_device=rank)
@@ -132,7 +132,7 @@ def main_worker(rank, args):
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
+        train(train_loader, model, criterion, optimizer, epoch)
         if epoch >= 10 and epoch % 10 == 0:
             checkpoint = {
                 'epoch': epoch,
