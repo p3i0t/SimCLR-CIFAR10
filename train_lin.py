@@ -69,7 +69,7 @@ def main_worker(rank, args):
 
     # create model
     logger.info("=> creating model '{}'".format(args.backbone))
-    model = models.__dict__[args.arch]()
+    model = models.__dict__[args.backbone]()
 
     # freeze all layers but the last fc
     for name, param in model.named_parameters():
