@@ -106,7 +106,7 @@ def main_worker(rank, args):
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
+        train(train_loader, model, criterion, optimizer, epoch, rank)
         if rank == 0 and epoch >= 100 and epoch % 100 == 0:  # only one process (rank 0) write the checkpoint
             checkpoint = {
                 'epoch': epoch,
@@ -118,7 +118,7 @@ def main_worker(rank, args):
             torch.save(checkpoint, "checkpoint_{}.pt".format(epoch))
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(train_loader, model, criterion, optimizer, epoch, rank):
     losses = AverageMeter('Loss')
     acc = AverageMeter('Acc')
 
@@ -143,7 +143,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    logger.info("Epoch {}, loss: {:.4f}, acc: {:.4f}".format(epoch, losses.avg, acc.avg))
+    if rank == 0 and epoch >= 50 and epoch % 50 == 0:
+        print("Epoch {}, loss: {:.4f}, acc: {:.4f}".format(epoch, losses.avg, acc.avg))
 
 
 def adjust_learning_rate(optimizer, epoch, args):
