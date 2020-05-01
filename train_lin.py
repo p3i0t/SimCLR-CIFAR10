@@ -168,7 +168,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    logger.info("Epoch {}, loss: {:.4f}, acc: {:.4f}".format(epoch, losses.avg, acc.avg))
+    print("Epoch {}, loss: {:.4f}, acc: {:.4f}".format(epoch, losses.avg, acc.avg))
 
 
 def adjust_learning_rate(optimizer, epoch, args):
