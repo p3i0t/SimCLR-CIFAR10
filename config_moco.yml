@@ -23,7 +23,7 @@ load_epoch: 100
 seed: 42 # sacred handles automatic seeding when passed in the config
 batch_size: 256
 workers: 16
-epochs: 200
+epochs: 1000
 log_interval: 100
 
 dist_backend: nccl
