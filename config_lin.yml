@@ -1,0 +1,36 @@
+hydra:
+  job_logging:
+#    formatters:
+#      simple:
+#        format: '[]'
+    root:
+      handlers: [file, console]  # logging to file only.
+  run:
+    #dir: logs/${dataset}
+    dir: logs/MoCo/${dataset}
+
+
+dataset: cifar10
+
+data_dir: data
+
+backbone: resnet50 # resnet18 or resnet34, resnet50
+
+# train options
+load_checkpoint: True
+load_epoch: 1000
+seed: 42 # sacred handles automatic seeding when passed in the config
+batch_size: 256
+workers: 16
+epochs: 1000
+log_interval: 100
+
+
+# loss options
+lr: 0.03
+#optimizer: "Adam" # or LARS (experimental)
+weight_decay: 1.0e-4 # "optimized using LARS [...] and weight decay of 10−6"
+momentum: 0.9
+
+# finetune options
+finetune_epochs: 20
