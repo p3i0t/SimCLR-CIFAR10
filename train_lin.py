@@ -107,7 +107,7 @@ def main(args: DictConfig) -> None:
             torch.save(checkpoint, "lin_checkpoint_best.pt")
 
         loss, acc = run_epoch(model, test_loader)
-        logger.info("test loss: {:.4f}, acc: {:.4f}".format(epoch, loss, acc))
+        logger.info("test loss: {:.4f}, acc: {:.4f}".format(loss, acc))
 
 
 def run_epoch(model, dataloader, optimizer=None):
