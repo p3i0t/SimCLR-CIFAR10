@@ -160,9 +160,8 @@ def train_SimCLR(args: DictConfig) -> None:
 
                 loss_meter.update(loss.item(), x.size(0))
 
-            logger.info("Epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
-
             if epoch >= args.log_interval and epoch % args.log_interval == 0:
+                logger.info("Epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
                 # Save checkpoint
                 checkpoint = {
                     'model': model.module.state_dict(),
