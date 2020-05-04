@@ -172,7 +172,7 @@ def train_SimCLR(args: DictConfig) -> None:
                                                                  args.batch_size,
                                                                  args.temperature,
                                                                  epoch))
-                finetune_linear(model, args)
+                # finetune_linear(model, args)
 
 
 if __name__ == '__main__':
