@@ -67,7 +67,7 @@ def main(args: DictConfig) -> None:
     # optimizer = torch.optim.SGD(parameters, 0.1,
     #                             momentum=args.momentum,
     #                             weight_decay=0.)
-    optimizer = torch.optim.Adam(parameters, lr=0.01, weight_decay=1e-5)
+    optimizer = torch.optim.SGD(parameters, lr=30, weight_decay=0., momentum=0.9)
 
     cudnn.benchmark = True
 
@@ -93,6 +93,7 @@ def main(args: DictConfig) -> None:
 
     optimal_loss = 1e5
     for epoch in range(1, args.finetune_epochs + 1):
+        adjust_learning_rate(optimizer, epoch, args)
         loss, acc = run_epoch(model, train_loader, optimizer)
         logger.info("Epoch {}, train loss: {:.4f}, acc: {:.4f}".format(epoch, loss, acc))
         if loss < optimal_loss:
@@ -133,6 +134,15 @@ def run_epoch(model, dataloader, optimizer=None):
             loss.backward()
             optimizer.step()
     return loss_meter.avg, acc_meter.avg
+
+
+def adjust_learning_rate(optimizer, epoch, args):
+    """Decay the learning rate based on schedule"""
+    lr = args.lr
+    for milestone in args.schedule:
+        lr *= 0.1 if epoch >= milestone else 1.
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 
 if __name__ == '__main__':
