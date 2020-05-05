@@ -31,6 +31,7 @@ lr: 0.03
 #optimizer: "Adam" # or LARS (experimental)
 weight_decay: 1.0e-4 # "optimized using LARS [...] and weight decay of 10−6"
 momentum: 0.9
+schedule: [60, 80]
 
 # finetune options
-finetune_epochs: 20
+finetune_epochs: 100
