@@ -178,7 +178,7 @@ def train_SimCLR(args: DictConfig) -> None:
                 logger.info("Epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
                 # Save checkpoint
                 checkpoint = {
-                    'model': model.module.state_dict(),
+                    'model': model.state_dict(),
                     'optimizer': optimizer.state_dict(),
                 }
                 torch.save(checkpoint, 'simclr-e{}.pt'.format(epoch))
