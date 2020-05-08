@@ -1,18 +1,19 @@
 import hydra
 from omegaconf import DictConfig
 import logging
-
-import logging
+import numpy as np
 from PIL import Image
 
 import torch
 import torch.nn as nn
 from torch.optim import Adam
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 import torchvision.transforms as tfs
 from torchvision.datasets import CIFAR10
-from torchvision.models import resnet18, resnet34, resnet50
+from torchvision.models import resnet18
+from torchlars import LARS
 from utils import AverageMeter
+from torch.optim.lr_scheduler import LambdaLR
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +68,8 @@ def finetune_linear(model, args):
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
 
-    if isinstance(model, nn.DataParallel):
-        f = model.module
-    else:
-        f = model
-    mlp_dim = f.fc[0].in_features
-    f.fc = nn.Linear(mlp_dim, len(train_set.classes))
+    mlp_dim = model.fc[0].in_features
+    model.fc = nn.Linear(mlp_dim, len(train_set.classes))
     model = model.cuda()
 
     #  finetune a linear classifier
@@ -103,6 +100,11 @@ def finetune_linear(model, args):
     logger.info("Test Acc: {:.4f}".format(acc_meter.avg))
 
 
+def get_lr(step, total_steps, lr_max, lr_min):
+    """Compute learning rate according to cosine annealing schedule."""
+    return lr_min + (lr_max - lr_min) * 0.5 * (1 + np.cos(step / total_steps * np.pi))
+
+
 @hydra.main(config_path='config_SimCLR.yml')
 def train_SimCLR(args: DictConfig) -> None:
     assert torch.cuda.is_available()
@@ -121,30 +123,41 @@ def train_SimCLR(args: DictConfig) -> None:
 
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
 
-    model = eval(args.backbone)(pretrained=args.pretrained)
+    model = resnet18(pretrained=False)
 
     # use 3x3 rather than 7x7, because size of cifar10 is much smaller than ImageNet
     model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
     model.maxpool = nn.Identity()
 
     mlp_dim = model.fc.in_features
-    model.fc = nn.Sequential(nn.Linear(mlp_dim, mlp_dim),
+    model.fc = nn.Sequential(nn.Linear(mlp_dim, 2048),
                              nn.ReLU(),
-                             nn.Linear(mlp_dim, args.projection_dim))
+                             nn.Linear(2048, args.projection_dim))
 
+    model = model.cuda()
     if args.load_checkpoint:
-        ckpt = torch.load('{}-{}-b{}-t{}-e{}.pt'.format(args.dataset,
-                                                        args.backbone,
-                                                        args.batch_size,
-                                                        args.temperature,
-                                                        args.load_epoch))
+        ckpt = torch.load('simclr-e{}.pt'.format(args.load_epoch))
         model.load_state_dict(ckpt['model'])
         logger.info("Model loaded on epoch {}".format(args.load_epoch))
-        model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
         finetune_linear(model, args)
     else:
-        model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
-        optimizer = Adam(model.parameters(), lr=0.001)
+        base_optimizer = torch.optim.SGD(
+            model.parameters(),
+            args.learning_rate,
+            momentum=args.momentum,
+            weight_decay=args.weight_decay,
+            nesterov=True)
+
+        optimizer = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.001)
+
+        scheduler = LambdaLR(
+            optimizer,
+            lr_lambda=lambda step: get_lr(  # pylint: disable=g-long-lambda
+                step,
+                args.epochs * len(train_loader),
+                args.learning_rate,  # lr_lambda computes multiplicative factor
+                1e-6))
+
         # SimCLR training
         model.train()
         for epoch in range(1, args.epochs + 1):
@@ -157,6 +170,7 @@ def train_SimCLR(args: DictConfig) -> None:
                 loss = nt_xent(model(x), args.temperature)
                 loss.backward()
                 optimizer.step()
+                scheduler.step()
 
                 loss_meter.update(loss.item(), x.size(0))
 
@@ -167,12 +181,7 @@ def train_SimCLR(args: DictConfig) -> None:
                     'model': model.module.state_dict(),
                     'optimizer': optimizer.state_dict(),
                 }
-                torch.save(checkpoint, '{}-{}-b{}-t{}-e{}.pt'.format(args.dataset,
-                                                                 args.backbone,
-                                                                 args.batch_size,
-                                                                 args.temperature,
-                                                                 epoch))
-                # finetune_linear(model, args)
+                torch.save(checkpoint, 'simclr-e{}.pt'.format(epoch))
 
 
 if __name__ == '__main__':

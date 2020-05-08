@@ -15,13 +15,12 @@ dataset: cifar10
 data_dir: data
 
 backbone: resnet18 # or resnet34, resnet50
-pretrained: False  # whether load pretrained weights
 
 # train options
 load_checkpoint: False
 load_epoch: 100
 seed: 42 # sacred handles automatic seeding when passed in the config
-batch_size: 256
+batch_size: 512
 workers: 16
 epochs: 1000
 log_interval: 50
@@ -32,7 +31,8 @@ normalize: True
 projection_dim: 128 # "[...] to project the representation to a 128-dimensional latent space"
 
 # loss options
-optimizer: "Adam" # or LARS (experimental)
+optimizer: 'lars' # or LARS (experimental)
+learning_rate: 0.6 # lr = 0.3 * batch_size / 256
 weight_decay: 1.0e-6 # "optimized using LARS [...] and weight decay of 10−6"
 temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch sizes
 
