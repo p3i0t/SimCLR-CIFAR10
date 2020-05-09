@@ -73,7 +73,23 @@ def finetune_linear(model, args):
     model = model.cuda()
 
     #  finetune a linear classifier
-    optimizer = Adam(model.parameters(), lr=0.003)
+    optimizer = Adam(model.parameters(), lr=0.1)
+    base_optimizer = torch.optim.SGD(
+        model.parameters(),
+        lr=0.1,  # 0.05 * batch_size / 256
+        momentum=args.momentum,
+        weight_decay=args.weight_decay,
+        nesterov=True)
+
+    optimizer = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.001)
+
+    scheduler = LambdaLR(
+        optimizer,
+        lr_lambda=lambda step: get_lr(  # pylint: disable=g-long-lambda
+            step,
+            args.epochs * len(train_loader),
+            0.1,  # lr_lambda computes multiplicative factor
+            1e-6))
     criterion = nn.CrossEntropyLoss()
 
     model.train()
@@ -86,6 +102,8 @@ def finetune_linear(model, args):
             loss = criterion(pred, y)
             loss.backward()
             optimizer.step()
+            scheduler.step()
+
             classification_loss_meter.update(loss.item(), x.size(0))
         logger.info("Epoch {}, Linear finetune loss: {:.4f}".format(epoch, classification_loss_meter.avg))
 
