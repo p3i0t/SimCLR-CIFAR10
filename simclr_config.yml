@@ -14,7 +14,9 @@ dataset: cifar10
 
 data_dir: data
 
+# model
 backbone: resnet18 # or resnet34, resnet50
+projection_dim: 128 # "[...] to project the representation to a 128-dimensional latent space"
 
 # train options
 load_checkpoint: False
@@ -25,30 +27,14 @@ workers: 16
 epochs: 1000
 log_interval: 50
 
-inference: False
-# model options
-normalize: True
-projection_dim: 128 # "[...] to project the representation to a 128-dimensional latent space"
 
 # loss options
-optimizer: 'lars' # or LARS (experimental)
-learning_rate: 0.6 # lr = 0.3 * batch_size / 256
+optimizer: 'sgd' # or LARS (experimental)
+learning_rate: 0.6 # initial lr = 0.3 * batch_size / 256
 momentum: 0.9
 weight_decay: 1.0e-6 # "optimized using LARS [...] and weight decay of 10−6"
 temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch sizes
 
 
-
-## reload options
-#model_path: "logs/0" # set to the directory containing `checkpoint_##.tar`
-#epoch_num: 100 # set to checkpoint number
-#
-## mixed-precision training
-fp16: False
-fp16_opt_level: "O1"
-
-
 # finetune options
 finetune_epochs: 100
-
-device: cuda
