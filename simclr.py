@@ -6,7 +6,6 @@ import numpy as np
 from PIL import Image
 
 import torch
-import torch.nn as nn
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
@@ -66,22 +65,11 @@ def train(args: DictConfig) -> None:
                             transform=train_transform,
                             download=True)
 
-    # train_set_eval = CIFAR10Pair(root=data_dir,
-    #                              train=True,
-    #                              transform=test_transform,
-    #                              download=False)
-
     train_loader = DataLoader(train_set,
                               batch_size=args.batch_size,
                               shuffle=True,
                               num_workers=args.workers,
                               drop_last=True)
-
-    # eval_loader = DataLoader(train_set_eval,
-    #                          batch_size=args.batch_size,
-    #                          shuffle=False,
-    #                          num_workers=args.workers,
-    #                          drop_last=True)
 
     # Prepare model
     model = Model(projection_dim=args.projection_dim).cuda()
@@ -101,7 +89,7 @@ def train(args: DictConfig) -> None:
             step,
             args.epochs * len(train_loader),
             args.learning_rate,  # lr_lambda computes multiplicative factor
-            1e-6))
+            1e-4))
 
     # SimCLR training
     model.train()

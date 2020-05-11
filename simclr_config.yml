@@ -19,8 +19,7 @@ backbone: resnet18 # or resnet34, resnet50
 projection_dim: 128 # "[...] to project the representation to a 128-dimensional latent space"
 
 # train options
-load_checkpoint: False
-load_epoch: 100
+
 seed: 42 # sacred handles automatic seeding when passed in the config
 batch_size: 512
 workers: 16
@@ -37,4 +36,5 @@ temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch 
 
 
 # finetune options
+load_epoch: 100  # checkpoint for finetune
 finetune_epochs: 100
