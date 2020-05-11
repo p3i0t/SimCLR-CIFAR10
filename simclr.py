@@ -120,6 +120,7 @@ def train(args: DictConfig) -> None:
             scheduler.step()
 
             loss_meter.update(loss.item(), x.size(0))
+            train_bar.set_description("Epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
 
         # save checkpoint very log_interval epochs
         if epoch >= args.log_interval and epoch % args.log_interval == 0:
