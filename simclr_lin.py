@@ -84,12 +84,13 @@ def finetune(args: DictConfig) -> None:
     # Fix encoder
     model.enc.requires_grad = False
     parameters = [param for param in model.parameters() if param.requires_grad is True]  # trainable parameters.
-    optimizer = torch.optim.SGD(
-        parameters,
-        lr=0.2,  # use larger lr=0.1 * batch_size / 256. See Section B.7 of SimCLR paper.
-        momentum=args.momentum,
-        weight_decay=0.0,   # no decay
-        nesterov=True)
+    optimizer = torch.optim.Adam(parameters, lr=0.001)
+    # optimizer = torch.optim.SGD(
+    #     parameters,
+    #     lr=0.2,  # use larger lr=0.1 * batch_size / 256. See Section B.7 of SimCLR paper.
+    #     momentum=args.momentum,
+    #     weight_decay=0.0,   # no decay
+    #     nesterov=True)
 
     # scheduler = LambdaLR(
     #     optimizer,
