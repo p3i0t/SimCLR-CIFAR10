@@ -79,6 +79,7 @@ def finetune(args: DictConfig) -> None:
     pre_model = Model(projection_dim=args.projection_dim).cuda()
     pre_model.load_state_dict(torch.load('simclr_epoch{}.pt'.format(args.load_epoch)))
     model = LinModel(pre_model.enc, feature_dim=pre_model.feature_dim, n_classes=len(train_set.targets))
+    model = model.cuda()
 
     # Fix encoder
     model.enc.requires_grad = False
