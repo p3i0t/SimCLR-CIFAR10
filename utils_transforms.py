@@ -18,7 +18,7 @@ def get_cifar10_transforms(s=0.5):
     color_distort = get_color_distortion(s)
     train_transform = transforms.Compose([transforms.RandomSizedCrop(32),
                                           transforms.RandomHorizontalFlip(p=0.5),
-                                          color_distort(),
+                                          color_distort,
                                           transforms.ToTensor()])
     test_transform = transforms.ToTensor()
     return train_transform, test_transform

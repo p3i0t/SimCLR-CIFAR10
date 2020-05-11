@@ -83,10 +83,6 @@ def train(args: DictConfig) -> None:
     #                          num_workers=args.workers,
     #                          drop_last=True)
 
-    # dataloader bars
-    train_bar = tqdm(train_loader)
-    # eval_bar = tqdm(eval_loader)
-
     # Prepare model
     model = Model(projection_dim=args.projection_dim).cuda()
     logger.info('feature dim: {}, projection dim: {}'.format(model.feature_dim, args.projection_dim))
@@ -111,12 +107,14 @@ def train(args: DictConfig) -> None:
     model.train()
     for epoch in range(1, args.epochs + 1):
         loss_meter = AverageMeter("SimCLR_loss")
+        train_bar = tqdm(train_loader)
         for x, y in train_bar:
             sizes = x.size()
             x = x.view(sizes[0] * 2, sizes[2], sizes[3], sizes[4]).cuda()
 
             optimizer.zero_grad()
-            loss = nt_xent(model(x), args.temperature)
+            feature, rep = model(x)
+            loss = nt_xent(rep, args.temperature)
             loss.backward()
             optimizer.step()
             scheduler.step()
