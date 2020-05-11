@@ -16,7 +16,7 @@ def get_cifar10_transforms(s=0.5):
     # use strength 0.5 for cifar10. See Section B.9 of SimCLR: https://arxiv.org/abs/2002.05709
     # No data-specific normalization used, and keep inputs in [0, 1].
     color_distort = get_color_distortion(s)
-    train_transform = transforms.Compose([transforms.RandomSizedCrop(32),
+    train_transform = transforms.Compose([transforms.RandomResizedCrop(32),
                                           transforms.RandomHorizontalFlip(p=0.5),
                                           color_distort,
                                           transforms.ToTensor()])
