@@ -82,9 +82,9 @@ def train(args: DictConfig) -> None:
 
     # Fix encoder
     model.enc.requires_grad = False
-
+    parameters = [param for param in model.parameteres() if param.requires_grad is True]  # trainable parameters.
     optimizer = torch.optim.SGD(
-        model.parameters(),
+        parameters,
         lr=0.2,  # use larger lr=0.1 * batch_size / 256. See Section B.7 of SimCLR paper.
         momentum=args.momentum,
         weight_decay=0.0,   # no decay
