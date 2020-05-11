@@ -62,7 +62,7 @@ def run_epoch(model, dataloader, epoch, optimizer=None):
 
 
 @hydra.main(config_path='simclr_config.yml')
-def train(args: DictConfig) -> None:
+def finetune(args: DictConfig) -> None:
     train_transform = transforms.Compose([transforms.RandomResizedCrop(32),
                                           transforms.RandomHorizontalFlip(p=0.5),
                                           transforms.ToTensor()])
@@ -108,5 +108,9 @@ def train(args: DictConfig) -> None:
             optimal_acc = test_acc
 
     logger.info("Best Test Acc: {:.4f}".format(optimal_acc))
+
+
+if __name__ == '__main__':
+    finetune()
 
 
