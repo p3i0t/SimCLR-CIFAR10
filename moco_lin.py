@@ -10,7 +10,7 @@ import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-from torchvision.models import resnet18, resnet50
+from torchvision.models import resnet18, resnet34
 import torch.nn.functional as F
 from utils import AverageMeter
 from tqdm import tqdm
@@ -51,7 +51,7 @@ def main(args: DictConfig) -> None:
     msg = model.load_state_dict(state_dict, strict=False)
     assert set(msg.missing_keys) == {"fc.weight", "fc.bias"}
 
-    logger.info("=> loaded pre-trained model checkpoint_{}.pt".format(args.load_epoch))
+    logger.info("=> loaded pre-trained model moco_{}_epoch{}.pt".format(args.backbone, args.load_epoch))
     model = model.cuda()
 
     parameters = list(filter(lambda p: p.requires_grad, model.parameters()))

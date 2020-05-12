@@ -104,7 +104,7 @@ def train(args: DictConfig) -> None:
         train_bar = tqdm(train_loader)
         for x, y in train_bar:
             sizes = x.size()
-            x = x.view(sizes[0] * 2, sizes[2], sizes[3], sizes[4]).cuda()
+            x = x.view(sizes[0] * 2, sizes[2], sizes[3], sizes[4]).cuda(non_blocking=True)
 
             optimizer.zero_grad()
             feature, rep = model(x)
