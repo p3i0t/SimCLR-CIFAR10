@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-import os
+import hydra
+from omegaconf import DictConfig
+import logging
 
 import torch
 import torch.nn as nn
@@ -8,28 +10,20 @@ import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-import torchvision.models as models
+from torchvision.models import resnet18, resnet50
 import torch.nn.functional as F
 from utils import AverageMeter
+from tqdm import tqdm
 
-
-import hydra
-from omegaconf import DictConfig
-import logging
 
 logger = logging.getLogger(__name__)
 
 
-model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
-
-
 @hydra.main(config_path='config_lin.yml')
 def main(args: DictConfig) -> None:
-    # create model
+    # Prepare model
     logger.info("=> creating model '{}'".format(args.backbone))
-    model = models.__dict__[args.backbone]()
+    model = eval(args.backbone)()
 
     model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
     model.maxpool = nn.Identity()
@@ -38,19 +32,19 @@ def main(args: DictConfig) -> None:
     for name, param in model.named_parameters():
         if name not in ['fc.weight', 'fc.bias']:
             param.requires_grad = False
+
     # init the fc layer
     model.fc.weight.data.normal_(mean=0.0, std=0.01)
     model.fc.bias.data.zero_()
 
     # load pre-trained
-    checkpoint = torch.load('checkpoint_{}.pt'.format(args.load_epoch), map_location="cpu")
+    state_dict = torch.load('moco_{}_epoch{}.pt'.format(args.backbone, args.load_epoch), map_location="cpu")
     # rename moco pre-trained keys
-    state_dict = checkpoint['state_dict']
     for k in list(state_dict.keys()):
         # retain only encoder_q up to before the embedding layer
-        if k.startswith('module.encoder_q') and not k.startswith('module.encoder_q.fc'):
+        if k.startswith('encoder_q') and not k.startswith('encoder_q.fc'):
             # remove prefix
-            state_dict[k[len("module.encoder_q."):]] = state_dict[k]
+            state_dict[k[len("encoder_q."):]] = state_dict[k]
         # delete renamed or unused k
         del state_dict[k]
 
@@ -60,14 +54,10 @@ def main(args: DictConfig) -> None:
     logger.info("=> loaded pre-trained model checkpoint_{}.pt".format(args.load_epoch))
     model = model.cuda()
 
-    # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda()
     parameters = list(filter(lambda p: p.requires_grad, model.parameters()))
     assert len(parameters) == 2  # fc.weight, fc.bias
-    # optimizer = torch.optim.SGD(parameters, 0.1,
-    #                             momentum=args.momentum,
-    #                             weight_decay=0.)
-    optimizer = torch.optim.SGD(parameters, lr=30, weight_decay=0., momentum=0.9)
+
+    optimizer = torch.optim.Adam(parameters, lr=0.001, weight_decay=0.)
 
     cudnn.benchmark = True
 
@@ -75,43 +65,33 @@ def main(args: DictConfig) -> None:
         transforms.RandomResizedCrop(32),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
     ])
 
     transform_ = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
     ])
 
     data_dir = hydra.utils.to_absolute_path(args.data_dir)
-    train_dataset = datasets.CIFAR10(root=data_dir, train=True, transform=transform, download=True)
-    test_dataset = datasets.CIFAR10(root=data_dir, train=False, transform=transform_, download=True)
+    train_dataset = datasets.CIFAR10(root=data_dir, train=True, transform=transform, download=False)
+    test_dataset = datasets.CIFAR10(root=data_dir, train=False, transform=transform_, download=False)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,  drop_last=True)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,  drop_last=False)
 
-    optimal_loss = 1e5
+    optimal_loss, optimal_acc = 1e5, 0.
     for epoch in range(1, args.finetune_epochs + 1):
-        adjust_learning_rate(optimizer, epoch, args)
-        loss, acc = run_epoch(model, train_loader, optimizer)
-        logger.info("Epoch {}, train loss: {:.4f}, acc: {:.4f}".format(epoch, loss, acc))
-        if loss < optimal_loss:
-            optimal_loss = loss
+        train_loss, train_acc = run_epoch(model, train_loader, epoch, optimizer)
+        test_loss, test_acc = run_epoch(model, test_loader, epoch)
+
+        if train_loss < optimal_loss:
+            optimal_loss = train_loss
+            optimal_acc = test_acc
             logger.info("==> New best results")
-            checkpoint = {
-                'epoch': epoch,
-                'backbone': args.backbone,
-                'state_dict': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-            }
-            torch.save(checkpoint, "lin_checkpoint_best.pt")
+            torch.save(model.state_dict(), "moco_lin_{}_best.pt".format(args.backbone))
 
-        loss, acc = run_epoch(model, test_loader)
-        logger.info("test loss: {:.4f}, acc: {:.4f}".format(loss, acc))
+    logger.info("Best test acc: {:.4f}".format(optimal_acc))
 
 
-def run_epoch(model, dataloader, optimizer=None):
+def run_epoch(model, dataloader, epoch, optimizer=None):
     loss_meter = AverageMeter('Loss')
     acc_meter = AverageMeter('Acc')
 
@@ -119,7 +99,9 @@ def run_epoch(model, dataloader, optimizer=None):
         model.train()
     else:
         model.eval()
-    for batch_id, (x, y) in enumerate(dataloader):
+
+    loader_bar = tqdm(dataloader)
+    for x, y in loader_bar:
         x = x.cuda(non_blocking=True)
         y = y.cuda(non_blocking=True)
 
@@ -133,16 +115,15 @@ def run_epoch(model, dataloader, optimizer=None):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+        if optimizer:
+            loader_bar.set_description("Train epoch {}, loss: {:.4f}, acc: {:.4f}"
+                                       .format(epoch, loss_meter.avg, acc_meter.avg))
+        else:
+            loader_bar.set_description("Test epoch {}, loss: {:.4f}, acc: {:.4f}"
+                                       .format(epoch, loss_meter.avg, acc_meter.avg))
+
     return loss_meter.avg, acc_meter.avg
-
-
-def adjust_learning_rate(optimizer, epoch, args):
-    """Decay the learning rate based on schedule"""
-    lr = args.lr
-    for milestone in args.schedule:
-        lr *= 0.1 if epoch >= milestone else 1.
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
 
 
 if __name__ == '__main__':

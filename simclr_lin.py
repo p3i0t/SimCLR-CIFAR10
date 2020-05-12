@@ -54,8 +54,13 @@ def run_epoch(model, dataloader, epoch, optimizer=None):
         acc = (logits.argmax(dim=1) == y).float().mean()
         loss_meter.update(loss.item(), x.size(0))
         acc_meter.update(acc.item(), x.size(0))
+        if optimizer:
+            loader_bar.set_description("Train epoch {}, loss: {:.4f}, acc: {:.4f}"
+                                       .format(epoch, loss_meter.avg, acc_meter.avg))
+        else:
+            loader_bar.set_description("Test epoch {}, loss: {:.4f}, acc: {:.4f}"
+                                       .format(epoch, loss_meter.avg, acc_meter.avg))
 
-        loader_bar.set_description("Epoch {}, loss: {:.4f}, Acc: {:.4f}".format(epoch, loss_meter.avg, acc_meter.avg))
     return loss_meter.avg, acc_meter.avg
 
 
@@ -92,6 +97,8 @@ def finetune(args: DictConfig) -> None:
         if train_loss < optimal_loss:
             optimal_loss = train_loss
             optimal_acc = test_acc
+            logger.info("==> New best results")
+            torch.save(model.state_dict(), 'simclr_lin_{}_best.pth'.format(args.backbone))
 
     logger.info("Best Test Acc: {:.4f}".format(optimal_acc))
 
