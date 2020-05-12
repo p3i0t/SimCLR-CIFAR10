@@ -7,6 +7,7 @@ from PIL import Image
 
 import torch
 import torch.backends.cudnn as cudnn
+import torch.nn.functional as F
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
@@ -31,24 +32,20 @@ class CIFAR10Pair(CIFAR10):
         return torch.stack(imgs), target  # stack a positive pair
 
 
-def pair_cosine_similarity(x, eps=1e-8):
-    n = x.norm(p=2, dim=1, keepdim=True)
-    return (x @ x.t()) / (n * n.t()).clamp(min=eps)
-
-
 def nt_xent(x, t=0.5):
-    x = pair_cosine_similarity(x)
-    x = torch.exp(x / t)
-    idx = torch.arange(x.size()[0])
+    x = F.normalize(x, dim=1)
+    x_scores =  (x @ x.t()).clamp(min=1e-7)  # normalized cosine similarity scores
+    x_scale = x_scores / t   # scale with temperature
 
-    # put positive pairs on the diagonal
-    idx[::2] += 1
-    idx[1::2] -= 1
-    x = x[idx]
+    # (2N-1)-way softmax without the i-th entry for i-th element.
+    # Set the diagonals to be large negative values, which become zeros after softmax.
+    x_scale = x_scale - torch.eye(x_scale.size(0)).to(x_scale.device) * 1e5
 
-    # subtract the similarity of 1 from the numerator
-    x = x.diag() / (x.sum(0) - torch.exp(torch.tensor(1 / t)))
-    return -torch.log(x.mean())
+    # targets 2N elements.
+    targets = torch.arange(x.size()[0])
+    targets[::2] += 1  # target of 2k element is 2k+1
+    targets[1::2] -= 1  # target of 2k+1 element is 2k
+    return F.cross_entropy(x_scale, targets.long().to(x_scale.device))
 
 
 def get_lr(step, total_steps, lr_max, lr_min):

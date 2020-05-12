@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 def main(args: DictConfig) -> None:
     # Prepare model
     logger.info("=> creating model '{}'".format(args.backbone))
-    model = eval(args.backbone)()
+    model = eval(args.backbone)(pretrained=False)
 
     model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
     model.maxpool = nn.Identity()
@@ -44,7 +44,7 @@ def main(args: DictConfig) -> None:
         # retain only encoder_q up to before the embedding layer
         if k.startswith('encoder_q') and not k.startswith('encoder_q.fc'):
             # remove prefix
-            state_dict[k[len("encoder_q."):]] = state_dict[k]
+            state_dict[k[len("encoder_q"):]] = state_dict[k]
         # delete renamed or unused k
         del state_dict[k]
 
