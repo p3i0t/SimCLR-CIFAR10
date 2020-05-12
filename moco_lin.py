@@ -19,7 +19,7 @@ from tqdm import tqdm
 logger = logging.getLogger(__name__)
 
 
-@hydra.main(config_path='config_lin.yml')
+@hydra.main(config_path='moco_config.yml')
 def main(args: DictConfig) -> None:
     # Prepare model
     logger.info("=> creating model '{}'".format(args.backbone))
