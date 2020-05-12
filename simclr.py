@@ -6,11 +6,13 @@ import numpy as np
 from PIL import Image
 
 import torch
+import torch.backends.cudnn as cudnn
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
+from torchvision.models import resnet18, resnet34
 
-from models import Model
+from models import SimCLR
 from utils import AverageMeter
 from utils_transforms import get_cifar10_transforms
 
@@ -57,8 +59,9 @@ def get_lr(step, total_steps, lr_max, lr_min):
 @hydra.main(config_path='simclr_config.yml')
 def train(args: DictConfig) -> None:
     assert torch.cuda.is_available()
-    train_transform, test_transform = get_cifar10_transforms(s=0.5)
+    cudnn.benchmark = True
 
+    train_transform, test_transform = get_cifar10_transforms(s=0.5)
     data_dir = hydra.utils.to_absolute_path(args.data_dir)  # get absolute path of data dir
     train_set = CIFAR10Pair(root=data_dir,
                             train=True,
@@ -72,7 +75,10 @@ def train(args: DictConfig) -> None:
                               drop_last=True)
 
     # Prepare model
-    model = Model(projection_dim=args.projection_dim).cuda()
+    assert args.backbone in ['resnet18', 'resnet34']
+    base_encoder = eval(args.backbone)
+    model = SimCLR(base_encoder, projection_dim=args.projection_dim).cuda()
+    logger.info('Base model: {}'.format(args.backbone))
     logger.info('feature dim: {}, projection dim: {}'.format(model.feature_dim, args.projection_dim))
 
     optimizer = torch.optim.SGD(
@@ -108,13 +114,12 @@ def train(args: DictConfig) -> None:
             scheduler.step()
 
             loss_meter.update(loss.item(), x.size(0))
-            train_bar.set_description("Epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
+            train_bar.set_description("Train epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
 
         # save checkpoint very log_interval epochs
         if epoch >= args.log_interval and epoch % args.log_interval == 0:
-            logger.info("Epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
-            # Save checkpoint
-            torch.save(model.state_dict(), 'simclr_epoch{}.pt'.format(epoch))
+            logger.info("==> Save checkpoint. Train epoch {}, SimCLR loss: {:.4f}".format(epoch, loss_meter.avg))
+            torch.save(model.state_dict(), 'simclr_{}_epoch{}.pt'.format(args.backbone, epoch))
 
 
 if __name__ == '__main__':

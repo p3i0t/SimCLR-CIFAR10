@@ -2,17 +2,15 @@ import hydra
 from omegaconf import DictConfig
 import logging
 
-import numpy as np
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import LambdaLR
+from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 from torchvision import transforms
 
-from models import Model
+from models import SimCLR
 from utils import AverageMeter
 from utils_transforms import get_cifar10_transforms
 
@@ -76,29 +74,15 @@ def finetune(args: DictConfig) -> None:
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
 
     # Prepare model
-    pre_model = Model(projection_dim=args.projection_dim).cuda()
-    pre_model.load_state_dict(torch.load('simclr_epoch{}.pt'.format(args.load_epoch)))
+    pre_model = SimCLR(projection_dim=args.projection_dim).cuda()
+    pre_model.load_state_dict(torch.load('simclr_{}_epoch{}.pt'.format(args.backbone, args.load_epoch)))
     model = LinModel(pre_model.enc, feature_dim=pre_model.feature_dim, n_classes=len(train_set.targets))
     model = model.cuda()
 
     # Fix encoder
     model.enc.requires_grad = False
     parameters = [param for param in model.parameters() if param.requires_grad is True]  # trainable parameters.
-    optimizer = torch.optim.Adam(parameters, lr=0.001)
-    # optimizer = torch.optim.SGD(
-    #     parameters,
-    #     lr=0.2,  # use larger lr=0.1 * batch_size / 256. See Section B.7 of SimCLR paper.
-    #     momentum=args.momentum,
-    #     weight_decay=0.0,   # no decay
-    #     nesterov=True)
-
-    # scheduler = LambdaLR(
-    #     optimizer,
-    #     lr_lambda=lambda step: get_lr(  # pylint: disable=g-long-lambda
-    #         step,
-    #         args.epochs * len(train_loader),
-    #         0.1,  # lr_lambda computes multiplicative factor
-    #         1e-6))
+    optimizer = Adam(parameters, lr=0.001)
 
     optimal_loss, optimal_acc = 1e5, 0.
     for epoch in range(1, args.finetune_epochs + 1):
