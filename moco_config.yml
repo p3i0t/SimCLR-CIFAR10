@@ -27,11 +27,11 @@ backbone: resnet18 # resnet18 or resnet34, resnet50
 moco_dim: 128
 moco_k: 4096
 moco_m: 0.999
-moco_t: 0.07
+moco_t: 0.2
 
 
 # loss options
-lr: 0.6 # initial lr = 0.3 * batch_size / 256
+learning_rate: 0.03
 optimizer: 'sgd' # or LARS (experimental)
 weight_decay: 1e-6 # "optimized using LARS [...] and weight decay of 10−6"
 momentum: 0.9

@@ -54,7 +54,7 @@ def main(args: DictConfig) -> None:
     model = MoCo(eval(args.backbone), args.moco_dim, args.moco_k, args.moco_m, args.moco_t).cuda()
     logger.info("Base encoder: {}".format(args.backbone))
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
+    optimizer = torch.optim.SGD(model.parameters(), args.learning_rate,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay,
                                 nesterov=True)
