@@ -66,7 +66,7 @@ def main(args: DictConfig) -> None:
             step,
             args.epochs * len(train_loader),
             args.learning_rate,  # lr_lambda computes multiplicative factor
-            1e-4))
+            1e-3))
 
     for epoch in range(1, args.epochs + 1):
         # train for one epoch

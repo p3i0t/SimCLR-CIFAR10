@@ -95,7 +95,7 @@ def train(args: DictConfig) -> None:
             step,
             args.epochs * len(train_loader),
             args.learning_rate,  # lr_lambda computes multiplicative factor
-            1e-4))
+            1e-3))
 
     # SimCLR training
     model.train()
