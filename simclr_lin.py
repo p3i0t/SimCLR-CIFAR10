@@ -1,11 +1,13 @@
 import hydra
 from omegaconf import DictConfig
 import logging
+import numpy as np
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
+from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 from torchvision import transforms
@@ -33,7 +35,7 @@ class LinModel(nn.Module):
         return self.lin(self.enc(x))
 
 
-def run_epoch(model, dataloader, epoch, optimizer=None):
+def run_epoch(model, dataloader, epoch, optimizer=None, scheduler=None):
     if optimizer:
         model.train()
     else:
@@ -51,6 +53,9 @@ def run_epoch(model, dataloader, epoch, optimizer=None):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            if scheduler:
+                scheduler.step()
+
         acc = (logits.argmax(dim=1) == y).float().mean()
         loss_meter.update(loss.item(), x.size(0))
         acc_meter.update(acc.item(), x.size(0))
@@ -64,12 +69,17 @@ def run_epoch(model, dataloader, epoch, optimizer=None):
     return loss_meter.avg, acc_meter.avg
 
 
+def get_lr(step, total_steps, lr_max, lr_min):
+    """Compute learning rate according to cosine annealing schedule."""
+    return lr_min + (lr_max - lr_min) * 0.5 * (1 + np.cos(step / total_steps * np.pi))
+
+
 @hydra.main(config_path='simclr_config.yml')
 def finetune(args: DictConfig) -> None:
     train_transform = transforms.Compose([transforms.RandomResizedCrop(32),
                                           transforms.RandomHorizontalFlip(p=0.5),
                                           transforms.ToTensor()])
-    _, test_transform = get_cifar10_transforms(s=0.5)
+    test_transform = transforms.ToTensor()
 
     data_dir = hydra.utils.to_absolute_path(args.data_dir)
     train_set = CIFAR10(root=data_dir, train=True, transform=train_transform, download=False)
@@ -88,11 +98,27 @@ def finetune(args: DictConfig) -> None:
     # Fix encoder
     model.enc.requires_grad = False
     parameters = [param for param in model.parameters() if param.requires_grad is True]  # trainable parameters.
-    optimizer = Adam(parameters, lr=0.001)
+    # optimizer = Adam(parameters, lr=0.001)
+
+    optimizer = torch.optim.SGD(
+        parameters,
+        0.2,   # lr = 0.1 * batch_size / 256, see section B.6 and B.7 of SimCLR paper.
+        momentum=args.momentum,
+        weight_decay=0.,
+        nesterov=True)
+
+    # cosine annealing lr
+    scheduler = LambdaLR(
+        optimizer,
+        lr_lambda=lambda step: get_lr(  # pylint: disable=g-long-lambda
+            step,
+            args.epochs * len(train_loader),
+            args.learning_rate,  # lr_lambda computes multiplicative factor
+            1e-3))
 
     optimal_loss, optimal_acc = 1e5, 0.
     for epoch in range(1, args.finetune_epochs + 1):
-        train_loss, train_acc = run_epoch(model, train_loader, epoch, optimizer)
+        train_loss, train_acc = run_epoch(model, train_loader, epoch, optimizer, scheduler)
         test_loss, test_acc = run_epoch(model, test_loader, epoch)
 
         if train_loss < optimal_loss:
