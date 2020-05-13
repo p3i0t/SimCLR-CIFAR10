@@ -9,7 +9,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 from torchvision import transforms
-
+from torchvision.models import resnet18, resnet34
 from models import SimCLR
 from utils import AverageMeter
 from utils_transforms import get_cifar10_transforms
