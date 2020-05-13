@@ -35,5 +35,5 @@ temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch 
 
 
 # finetune options
-load_epoch: 100  # checkpoint for finetune
 finetune_epochs: 100
+load_epoch: 1000  # checkpoint for finetune

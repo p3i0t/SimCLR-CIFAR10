@@ -37,7 +37,7 @@ def nt_xent(x, t=0.5):
     x_scores =  (x @ x.t()).clamp(min=1e-7)  # normalized cosine similarity scores
     x_scale = x_scores / t   # scale with temperature
 
-    # (2N-1)-way softmax without the i-th entry for i-th element.
+    # (2N-1)-way softmax without the score of i-th entry itself.
     # Set the diagonals to be large negative values, which become zeros after softmax.
     x_scale = x_scale - torch.eye(x_scale.size(0)).to(x_scale.device) * 1e5
 

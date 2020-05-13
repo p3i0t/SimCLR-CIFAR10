@@ -1,7 +1,8 @@
 # Self-Supervised Learning on CIFAR-10 
 This repo contains implementations of [SimCLR](https://arxiv.org/abs/2002.05709), [MoCo version 2](https://arxiv.org/abs/2003.04297) (the improved
-version of the original MoCo with tricks borrowed from SimCLR)  and experimental results on CIFAR10.  All
- experiments could be run on only 1 single GPU (1080Ti). After 1000 training epochs, we could get 9x.xx% test accuracy
+version of MoCo) and experimental results on CIFAR10.  This repo aims to facilitate the fast proof-of-concept and research based on
+these two self-supervised learning frameworks. Thus I try to keep it clean and minimal, and avoid over-engineering. 
+All experiments could be run on only 1 single GPU (1080Ti). After 1000 training epochs, we could get 9x.xx% test accuracy
  with SimCLR, and 9x.xx% with MoCo v2.
 
 ## Dependencies
@@ -37,13 +38,13 @@ The default ``batch_size`` is 256. All the hyperparameters are available in ``mo
 ## Experimental results
 
 ### Memory and Epoch Time
-We could train SimCLR (``batch_size=512``) on one 1080Ti GPU (11G memory) with ``resnet18`` and ``resnet34``(not enough
+We could train SimCLR on one 1080Ti GPU (11G memory) with ``resnet18`` and ``resnet34``(not enough
 memory for resnet50).
 
-| Backbone | Memory | s/Epoch | Test Acc|
-|----|-----|----|----|
-|resnet18| ~6.2G| 42s||
-|resnet34| ~9.7G| 62s||
-|resnet50| -| -|-|
+|Evaluation| Batch Size| Backbone |Projection Dim|Training Epochs| Memory | s/Epoch | Test Acc|
+|----|----|----|-----|----|----|----|---|
+|Linear Finetune|512|resnet18|128|1000| ~6.2G| 42s||
+|Linear Finetune|512|resnet34|128|1000| ~9.7G| 64s||
+|Linear Finetune|512|resnet50|128|1000| -| -|-|
 
 
