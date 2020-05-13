@@ -36,3 +36,14 @@ The default ``batch_size`` is 256. All the hyperparameters are available in ``mo
 
 ## Experimental results
 
+### Memory and Epoch Time
+We could train SimCLR (``batch_size=512``) on one 1080Ti GPU (11G memory) with ``resnet18`` and ``resnet34``(not enough
+memory for resnet50).
+
+| Backbone | Memory | s/Epoch | Test Acc|
+|----|-----|----|----|
+|resnet18| ~6.2G| 42s||
+|resnet34| ~9.7G| 62s||
+|resnet50| -| -|-|
+
+
