@@ -1,5 +1,5 @@
 # SimCLR on CIFAR-10 
-This repo contains implementations of [SimCLR](https://arxiv.org/abs/2002.05709) and experimental results on CIFAR10.
+This repo contains a Pytorch implementation of [SimCLR](https://arxiv.org/abs/2002.05709) and experimental results on CIFAR10.
   This repo aims to facilitate the fast proof-of-concept and research based on
 SimCLR. So I try to keep it clean and minimal, and avoid over-engineering. All experiments could be run on only 1 single GPU (1080Ti).
  
