@@ -12,10 +12,9 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 from torchvision.models import resnet18, resnet34
+from torchvision import transforms
 
 from models import SimCLR
-from utils_transforms import get_cifar10_transforms
-
 from tqdm import tqdm
 
 
@@ -71,12 +70,26 @@ def get_lr(step, total_steps, lr_max, lr_min):
     return lr_min + (lr_max - lr_min) * 0.5 * (1 + np.cos(step / total_steps * np.pi))
 
 
+# color distortion composed by color jittering and color dropping.
+# See Section A of SimCLR: https://arxiv.org/abs/2002.05709
+def get_color_distortion(s=0.5):  # 0.5 for CIFAR10 by default
+    # s is the strength of color distortion
+    color_jitter = transforms.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+    rnd_color_jitter = transforms.RandomApply([color_jitter], p=0.8)
+    rnd_gray = transforms.RandomGrayscale(p=0.2)
+    color_distort = transforms.Compose([rnd_color_jitter, rnd_gray])
+    return color_distort
+
+
 @hydra.main(config_path='simclr_config.yml')
 def train(args: DictConfig) -> None:
     assert torch.cuda.is_available()
     cudnn.benchmark = True
 
-    train_transform, test_transform = get_cifar10_transforms(s=0.5)
+    train_transform = transforms.Compose([transforms.RandomResizedCrop(32),
+                                          transforms.RandomHorizontalFlip(p=0.5),
+                                          get_color_distortion(s=0.5),
+                                          transforms.ToTensor()])
     data_dir = hydra.utils.to_absolute_path(args.data_dir)  # get absolute path of data dir
     train_set = CIFAR10Pair(root=data_dir,
                             train=True,

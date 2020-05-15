@@ -13,8 +13,6 @@ from torchvision.datasets import CIFAR10
 from torchvision import transforms
 from torchvision.models import resnet18, resnet34
 from models import SimCLR
-from utils_transforms import get_cifar10_transforms
-
 from tqdm import tqdm
 
 

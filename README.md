@@ -17,6 +17,14 @@ We get 92.85% test acc with backbone resnet34 on CIFAR10, while the SimCLR paper
  
  ``pip install hydra-core --upgrade``
 
+## Code Structure
+```pydocstring
+models.py           # Define SimCLR model.
+simclr.py           # Code to train simclr.
+simclr_lin.py       # Linear Evaluation on frozen SimCLR representations.
+simclr_config.yml   # Config File with all default hyperparameters in training.
+```
+
 ## Usage
 
 Train SimCLR with  ``resnet18`` as backbone:
