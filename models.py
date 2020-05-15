@@ -1,11 +1,10 @@
-import torch
 import torch.nn as nn
 
 
 class SimCLR(nn.Module):
     def __init__(self, base_encoder, projection_dim=128):
         super().__init__()
-        self.enc = base_encoder(pretrained=False)
+        self.enc = base_encoder(pretrained=False)  # load model from torchvision.models without pretrained weights.
         self.feature_dim = self.enc.fc.in_features
 
         # Customize for CIFAR10. Replace conv 7x7 with conv 3x3, and remove first max pooling.
