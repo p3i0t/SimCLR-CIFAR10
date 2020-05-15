@@ -6,14 +6,16 @@ SimCLR. So I try to keep it clean and minimal, and avoid over-engineering. All e
 We get 92.85% test acc with backbone resnet34 on CIFAR10, while the SimCLR paper reports ~93.5% with backbone resnet50.
 
 ## Dependencies
-pytorch 1.5
+* pytorch >=1.2
+* torchvision >=0.4.0
+* hydra >=0.11.3
+* tqdm >=4.45.0
 
-hydra
-
-tqdm
-
-
-
+### Install Hydra
+[Hydra](https://hydra.cc/docs/next/intro/#installation) is a python framework to manage the hyperparameters during
+ training and evaluation. Install with:
+ 
+ ``pip install hydra-core --upgrade``
 
 ## Usage
 
@@ -33,6 +35,7 @@ The default ``batch_size`` is 512. All the hyperparameters are available in ``si
 We could train SimCLR on one 1080Ti GPU (11G memory) with ``resnet18`` and ``resnet34``(not enough
 memory for resnet50).
 
+### Results
 |Evaluation| Batch Size| Backbone |Projection Dim|Training Epochs| Memory | Training Time /Epoch | Test Acc|Test Acc in Paper|
 |----|----|----|-----|----|----|----|---|----|
 |Linear Finetune|512|resnet18|128|1000| ~6.2G| 38s|92.06%|[~91%](https://github.com/google-research/simclr)|
