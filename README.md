@@ -1,10 +1,9 @@
 # SimCLR on CIFAR-10 
 This repo contains implementations of [SimCLR](https://arxiv.org/abs/2002.05709) and experimental results on CIFAR10.
   This repo aims to facilitate the fast proof-of-concept and research based on
-SimCLR. So I try to keep it clean and minimal, and avoid over-engineering. 
-
-All experiments could be run on only 1 single GPU (1080Ti). After 1000 training epochs, we get 92.85% test acc
- with SimCLR (resnet34) (~93.5% reported with resnet50 backbone in SimCLR paper).
+SimCLR. So I try to keep it clean and minimal, and avoid over-engineering. All experiments could be run on only 1 single GPU (1080Ti).
+ 
+We get 92.85% test acc with backbone resnet34 on CIFAR10, while the SimCLR paper reports ~93.5% with backbone resnet50.
 
 ## Dependencies
 pytorch 1.5
