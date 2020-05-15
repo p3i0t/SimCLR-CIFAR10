@@ -24,6 +24,7 @@ Train SimCLR with  ``resnet18`` as backbone:
 Linear evaluation:
 
 ``python simclr_lin.py backbone=resnet18``
+
 The default ``batch_size`` is 512. All the hyperparameters are available in ``simclr_config.yml``,
  which could be overrided from the command line.
 
@@ -38,6 +39,7 @@ memory for resnet50).
 |Linear Finetune|512|resnet34|128|1000| ~9.7G| 64s|92.85%|-|
 |Linear Finetune|512|resnet50|128|1000| -| -|-|~93.5%|
 
+### Optimization setup
 |Optimization|Initial LR|Optimizer|LR Adjustment|Weight Decay|Momentum|Temperature|
 |----|----|----|----|----|----|----|
 |SimCLR Training|0.6 (0.3 * batch_size / 256)|SGD|Cosine Annealing (to min lr = 0.001)|1e-6|0.9|0.5|
