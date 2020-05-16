@@ -56,3 +56,9 @@ memory for resnet50).
 |SimCLR Training|0.6 (0.3 * batch_size / 256)|SGD|Cosine Annealing (to min lr = 0.001)|1e-6|0.9|0.5|
 |Linear Finetune|0.2 (0.1 * batch_size / 256)|SGD|Cosine Annealing (to min lr = 0.001)|0.|0.9|-|
 
+Difference of SimCLR training from original paper:
+* No LARS optimizer: LARS is designed for large batch training, but we use 512 here(not very large).
+ In the original paper, LARS is used as a wrapper of the 
+base SGD optimizer. We only keep the SGD optimzer and cosine annealing. 
+* No warmup.
+
