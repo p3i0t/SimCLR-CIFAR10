@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
 from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, SubsetRandomSampler
 from torchvision.datasets import CIFAR10
 from torchvision import transforms
 from torchvision.models import resnet18, resnet34
@@ -101,7 +101,10 @@ def finetune(args: DictConfig) -> None:
     train_set = CIFAR10(root=data_dir, train=True, transform=train_transform, download=False)
     test_set = CIFAR10(root=data_dir, train=False, transform=test_transform, download=False)
 
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, drop_last=True)
+    n_classes = 10
+    indices = np.random.choice(len(train_set), 10*n_classes, replace=False)
+    sampler = SubsetRandomSampler(indices)
+    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, drop_last=True, sampler=sampler)
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
 
     # Prepare model
