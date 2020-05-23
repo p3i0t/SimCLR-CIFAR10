@@ -104,7 +104,7 @@ def finetune(args: DictConfig) -> None:
     n_classes = 10
     indices = np.random.choice(len(train_set), 10*n_classes, replace=False)
     sampler = SubsetRandomSampler(indices)
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, drop_last=True, sampler=sampler)
+    train_loader = DataLoader(train_set, batch_size=args.batch_size, drop_last=True, sampler=sampler)
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
 
     # Prepare model
